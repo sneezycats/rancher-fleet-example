@@ -2,7 +2,7 @@
 # Capture the test-data baseline: PVC identity, volume identity, created-at,
 # counter lines, replica placement. Output: baseline.json (overwrites).
 set -euo pipefail
-KC=${CLUSTER_KUBECONFIG:-/tmp/rs-lh1-kubeconfig.yaml}
+KC=${CLUSTER_KUBECONFIG:-/tmp/<cluster>-kubeconfig.yaml}
 D=$(cd "$(dirname "$0")" && pwd)
 OUT=$D/baseline.json
 echo "capturing baseline: $(date -u +%FT%TZ)"

@@ -3,7 +3,7 @@
 # Verify trackable data survived the round: baseline identity intact,
 # created-at unchanged, counters still growing, volumes attached+healthy.
 set -uo pipefail
-KC=${CLUSTER_KUBECONFIG:-/tmp/rs-lh1-kubeconfig.yaml}
+KC=${CLUSTER_KUBECONFIG:-/tmp/<cluster>-kubeconfig.yaml}
 D=$(cd "$(dirname "$0")" && pwd)
 [ -f "$D/baseline.json" ] || { echo "FATAL: no baseline.json — run baseline.sh first"; exit 2; }
 python3 - "$KC" "$D/baseline.json" <<'PY'

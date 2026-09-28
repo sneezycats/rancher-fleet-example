@@ -4,6 +4,10 @@ A teaching artifact and starting point: run **one Kubernetes cluster, its node
 driver config, AND Longhorn entirely from one git repo** — auditable, branch-
 promotable, access-controlled by git + Rancher RBAC.
 
+Why: UI-driven installs drift — no audit trail, no review, and upgrades
+happen only when someone remembers. Git is the memory: every change is a
+reviewable commit, and promotion is a branch merge.
+
 ## The model (4 layers)
 
 1. **Git** — one repo per cluster (or per environment): charts + values + docs
@@ -27,7 +31,7 @@ data continuity. **No UI clicks, no imperative tooling.**
 ```
 ├── cluster-templates/chart/        # the cluster template (Helm chart)
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
-├── fleet/bundles/longhorn/         # Longhorn bundle: vendored chart (END STATE, re-pull per upgrade) + values pin
+├── fleet/bundles/longhorn/         # Longhorn bundle (two modes: repo-pinned + vendored) + values pin
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
 └── docs/                           # this approach, documented
@@ -50,6 +54,19 @@ data continuity. **No UI clicks, no imperative tooling.**
    → Longhorn deploys from its bundle.
 6. **Data layer + verification**: `scripts/` (PVCs + writers + baseline/verify)
    — the audit artifact for every future round.
+
+## Longhorn bundle: two modes, pick one
+
+- **Repo mode** (`fleet.yaml`, default): `helm.repo` + `version:` pin — the
+  chart is fetched at deploy time. **Upgrade = edit one version line in the
+  web UI.** Validated on Rancher 2.14.1 (adopts the existing release in
+  place, no pod churn).
+- **Vendored mode** (`fleet.vendored.yaml`): chart committed at
+  `longhorn-chart/` — deterministic, air-gap friendly, but every upgrade
+  needs a `helm pull` + replace + commit on a build host.
+
+Swap between them by which fleet.yaml is deployed. Longhorn upgrades are
+always their own commit, separate from cluster upgrades.
 
 ## Rules that make it safe (lab-enforced)
 

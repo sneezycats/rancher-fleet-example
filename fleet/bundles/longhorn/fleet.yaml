@@ -1,25 +1,31 @@
-# Per-path Fleet config — pins the Longhorn chart. The chart is VENDORED
-# (longhorn-chart/ at this path) so the deploy path has no external repo
-# dependency. Upgrades:#
-# *** NOTE: this repository SHOWS THE END STATE — the vendored chart is
-# committed at longhorn-chart/ (currently 1.11.2) and this is exactly what
-# Fleet deploys. The helm pull + replace + commit must be REPEATED for EVERY
-# Longhorn version upgrade: the vendored chart IS the version pin. There is no
-# remote-chart fetch at deploy time. Config-only changes (longhorn-values.yaml)
-# need no re-pull.
- `helm pull longhorn/longhorn --version X.Y.Z --untar
-# --untardir . && mv longhorn longhorn-chart` — after checking the
-# Longhorn↔K8s support matrix for every target cluster's Kubernetes minor.
+# Per-path Fleet config - pins the Longhorn chart. TWO supported modes:
 #
-# GOTCHA (Fleet version on Rancher 2.15.1): unknown keys under `helm:` are
-# SILENTLY DROPPED — `helm.targetNamespace`/`helm.createNamespace` did
-# nothing and the release landed in `default`. The namespace is set with the
-# TOP-LEVEL key instead (verified via bundle spec.options). NOTE: in THIS
-# Fleet version defaultNamespace is a plain STRING (newer Fleets take an
-# object). The Longhorn chart must install into longhorn-system only.
+#   REPO MODE (ACTIVE - this file): the chart is fetched by version from a
+#   Helm repository at deploy time. Upgrade = edit `version:` -> commit ->
+#   push - fully web-UI friendly (no local helm / tarballs). The version PIN
+#   and values live in git; the chart lives in the repo.
+#   VALIDATED 2026-09-28 on lab Fleet (Rancher 2.14.1): bundle converged and
+#   ADOPTED the existing release (releaseName + takeOwnership) in place -
+#   rev 1 -> rev 2 on the SAME release, no duplicate install, no pod churn.
+#
+#   VENDORED MODE (alternative): see fleet.vendored.yaml in this directory.
+#   Change `helm.chart` to ./longhorn-chart and drop repo/version. The chart
+#   is committed at longhorn-chart/ (END STATE - it must be re-pulled and
+#   replaced at EVERY Longhorn upgrade: the vendored chart IS the version
+#   pin; there is no remote-chart fetch at deploy time). Deterministic and
+#   air-gap friendly at the cost of a build-host step per upgrade.
+#
+# GOTCHA (Fleet on Rancher 2.14.1 / 2.15.1): unknown keys under `helm:` are
+# SILENTLY DROPPED - helm.targetNamespace/helm.createNamespace do nothing and
+# the release lands in `default`. The namespace must be set with the TOP-LEVEL
+# key. In this Fleet era defaultNamespace is a plain STRING (newer Fleets
+# accept an object). The Longhorn chart must install into longhorn-system.
 defaultNamespace: longhorn-system
 helm:
-  chart: ./longhorn-chart
+  repo: https://charts.longhorn.io
+  chart: longhorn
+  version: "1.11.2"
   releaseName: longhorn
+  takeOwnership: true
   valuesFiles:
     - longhorn-values.yaml

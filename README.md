@@ -27,7 +27,7 @@ data continuity. **No UI clicks, no imperative tooling.**
 ```
 ├── cluster-templates/chart/        # the cluster template (Helm chart)
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
-├── fleet/bundles/longhorn/         # Longhorn bundle (chart + values pin)
+├── fleet/bundles/longhorn/         # Longhorn bundle: vendored chart (END STATE, re-pull per upgrade) + values pin
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
 └── docs/                           # this approach, documented

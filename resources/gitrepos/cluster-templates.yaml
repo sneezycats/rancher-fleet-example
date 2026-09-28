@@ -1,0 +1,14 @@
+# Cluster template GitRepo (fleet.cattle.io) - EXAMPLE
+# Applies per environment; branch is the promotion axis
+# (development / staging / production share one repo, one branch each).
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: "<REPLACE_ME>-cluster-templates"
+  namespace: fleet-local
+spec:
+  branch: "<REPLACE_ME_BRANCH>"
+  paths:
+  - cluster-templates/chart
+  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  # targets omitted: a cluster-template bundle deploys itself on install

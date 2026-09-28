@@ -1,0 +1,35 @@
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.name | default .Release.Name }}
+  namespace: fleet-default
+  {{- with .Values.description }}
+  annotations:
+    field.cattle.io/description: {{ . | quote }}
+  {{- end }}
+spec:
+  cloudCredentialSecretName: {{ .Values.cloudCredentialSecretName | quote }}
+  enableNetworkPolicy: false
+  kubernetesVersion: {{ .Values.kubernetesVersion | quote }}
+  rkeConfig:
+    chartValues:
+      global:
+        cattle:
+          clusterName: {{ .Values.name | default .Release.Name | quote }}
+      harvester-cloud-provider:
+        cloudConfigPath: {{ .Values.harvesterCloudProvider.cloudConfigPath | quote }}
+    machineGlobalConfig:
+      {{- toYaml .Values.machineGlobalConfig | nindent 6 }}
+    machinePools:
+      {{- range $i, $pool := .Values.nodepools }}
+      - name: {{ $pool.name }}
+        displayName: {{ $pool.name }}
+        controlPlaneRole: {{ $pool.controlplane | default false }}
+        etcdRole: {{ $pool.etcd | default false }}
+        workerRole: {{ $pool.worker | default false }}
+        quantity: {{ $pool.quantity | default 1 }}
+        machineOS: linux
+        machineConfigRef:
+          kind: HarvesterConfig
+          name: {{ $.Release.Name }}-{{ $pool.name }}
+      {{- end }}

@@ -1,0 +1,40 @@
+{{- range $i, $pool := .Values.nodepools }}
+---
+apiVersion: rke-machine-config.cattle.io/v1
+kind: HarvesterConfig
+metadata:
+  name: {{ $.Release.Name }}-{{ $pool.name }}
+  namespace: fleet-default
+cloudConfig: ""
+clusterId: ""
+clusterName: ""
+clusterType: ""
+cpuCount: {{ ($pool.vcpu | default 2) | quote }}
+cpuModel: ""
+cpuPinning: false
+diskBus: {{ ($pool.diskBus | default $.Values.diskBus) | quote }}
+diskInfo: {{ printf "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"%s\",\"size\":%.0f}]}" ($pool.imageName | default $.Values.imageName) ($pool.disk | default $.Values.diskSize) | quote }}
+diskSize: "0"
+enableEfi: false
+enableSecureBoot: false
+enableTpm: false
+imageName: ""
+isolateEmulatorThread: false
+keyPairName: ""
+kubeconfigContent: ""
+memorySize: {{ ($pool.memory | default 4) | quote }}
+networkData: ""
+networkInfo: {{ printf "{\"interfaces\":[{\"networkName\":\"%s\"}]}" ($pool.networkName | default $.Values.networkName) | quote }}
+networkModel: ""
+networkName: ""
+networkType: ""
+reservedMemorySize: "-1"
+sshPassword: ""
+sshPort: "22"
+sshPrivateKeyPath: ""
+sshUser: {{ ($pool.sshUser | default $.Values.sshUser) | quote }}
+userData: {{ ($pool.userData | default $.Values.userData) | quote }}
+vgpuInfo: ""
+vmAffinity: ""
+vmNamespace: {{ ($pool.vmNamespace | default $.Values.vmNamespace) | quote }}
+{{- end }}

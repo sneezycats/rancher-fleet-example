@@ -1,0 +1,18 @@
+# Per-path Fleet config — pins the Longhorn chart. The chart is VENDORED
+# (longhorn-chart/ at this path) so the deploy path has no external repo
+# dependency. Upgrades: `helm pull longhorn/longhorn --version X.Y.Z --untar
+# --untardir . && mv longhorn longhorn-chart` — after checking the
+# Longhorn↔K8s support matrix for every target cluster's Kubernetes minor.
+#
+# GOTCHA (Fleet version on Rancher 2.15.1): unknown keys under `helm:` are
+# SILENTLY DROPPED — `helm.targetNamespace`/`helm.createNamespace` did
+# nothing and the release landed in `default`. The namespace is set with the
+# TOP-LEVEL key instead (verified via bundle spec.options). NOTE: in THIS
+# Fleet version defaultNamespace is a plain STRING (newer Fleets take an
+# object). The Longhorn chart must install into longhorn-system only.
+defaultNamespace: longhorn-system
+helm:
+  chart: ./longhorn-chart
+  releaseName: longhorn
+  valuesFiles:
+    - longhorn-values.yaml

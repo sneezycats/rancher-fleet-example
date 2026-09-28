@@ -1,0 +1,60 @@
+# Values for the RKE2-on-Harvester cluster template (EXAMPLE skeleton).
+#
+# Every <REPLACE_ME_*> must be set for a real environment. Example values that
+# are NOT wrapped serve as sane defaults and can be kept as-is.
+
+# Cluster name: defaults to the helm release name.
+#   install as: helm install <REPLACE_ME_CLUSTER> ./cluster-templates/chart
+name: ""
+description: ""
+
+# Kubernetes version — pick from the Rancher support matrix for YOUR Rancher
+# version (https://www.suse.com/suse-rancher/support-matrix/...). Example: an
+# older, well-supported pin is a good baseline for upgrade-ladder labs.
+kubernetesVersion: "v1.33.13+rke2r1"
+
+# Rancher cloud credential (created in the Rancher UI against your Harvester).
+#   Format: <credential-scope>:<id>  (look it up: kubectl get cloudcredentials -A)
+cloudCredentialSecretName: "<REPLACE_ME_CLOUD_CREDENTIAL>"
+
+# --- Harvester provider defaults (per-pool overrides possible below) ---
+vmNamespace: "<REPLACE_ME_VM_NAMESPACE>"        # e.g. k8s-infra
+networkName: "<REPLACE_ME_NETWORK>"             # <ns>/<network>, must exist on Harvester
+imageName: "<REPLACE_ME_IMAGE>"                 # VMImage displayName, must exist on Harvester
+diskSize: 80                                    # GiB — root disk (example)
+diskBus: "virtio"
+sshUser: "<REPLACE_ME_SSH_USER>"                # user the node driver provisions
+# cloud-init user_data — base64 of your user/ssh-key list. Example generation:
+#   echo " #cloud-config
+# users: [{name: ops, sudo: 'ALL=(ALL) NOPASSWD:ALL', ssh_authorized_keys: ['<KEY>']}]" \
+#     | base64 -w0
+# IMPORTANT: do not commit real keys — reference a secret-managed file or CI var.
+userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
+
+# --- RKE2 global config (example: calico + traefik, clickops-parity shape) ---
+machineGlobalConfig:
+  cni: calico
+  ingress-controller: traefik
+
+# Harvester cloud-provider chart values (CCM installed on control-plane nodes)
+harvesterCloudProvider:
+  cloudConfigPath: /var/lib/rancher/rke2/etc/config-files/cloud-provider-config
+
+# --- Node pools (example: 3 CP @ 6 vCPU/6 GiB + 3 workers @ 6 vCPU/4 GiB) ---
+nodepools:
+  - name: control-plane
+    etcd: true
+    controlplane: true
+    worker: false
+    quantity: 3
+    vcpu: 6
+    memory: 6
+    disk: 80
+  - name: workers
+    etcd: false
+    controlplane: false
+    worker: true
+    quantity: 3
+    vcpu: 6
+    memory: 4
+    disk: 160

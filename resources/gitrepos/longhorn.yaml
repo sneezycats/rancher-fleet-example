@@ -1,0 +1,16 @@
+# Longhorn bundle GitRepo (fleet.cattle.io) - EXAMPLE
+# Deploys Longhorn only onto clusters carrying the target label.
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: "<REPLACE_ME>-longhorn"
+  namespace: fleet-default
+spec:
+  branch: "<REPLACE_ME_BRANCH>"
+  paths:
+  - fleet/bundles/longhorn
+  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  targets:
+  - clusterSelector:
+      matchLabels:
+        managed-by: fleet

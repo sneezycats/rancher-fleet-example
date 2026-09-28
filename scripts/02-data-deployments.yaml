@@ -1,0 +1,73 @@
+# One writer per worker; each pod verifies data continuity on start.
+# Files on /data: created-at (once), counter (appends every 30s), start log.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lh-data-4bd9k
+  namespace: default
+  labels: {app: lh-test}
+spec:
+  replicas: 1
+  selector: {matchLabels: {writer: lh-data-4bd9k}}
+  template:
+    metadata: {labels: {writer: lh-data-4bd9k, app: lh-test}}
+    spec:
+      containers:
+      - name: writer
+        image: busybox:1.36
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          if test -f /data/created-at; then echo "CONTINUITY=EXISTING-DATA seen at $(date -u +%FT%TZ) nodes=$HOSTNAME" >> /data/start-log; else date -u +%FT%TZ > /data/created-at; echo "CONTINUITY=FRESH-VOLUME nodes=$HOSTNAME $(cat /data/created-at)" >> /data/start-log; fi
+          i=0
+          while true; do i=$((i+1)); echo "seq=$i ts=$(date -u +%FT%TZ) node=$HOSTNAME" >> /data/counter; sleep 30; done
+        volumeMounts: [{name: data, mountPath: /data}]
+      volumes: [{name: data, persistentVolumeClaim: {claimName: lh-test-5g}}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lh-data-kwwlx
+  namespace: default
+  labels: {app: lh-test}
+spec:
+  replicas: 1
+  selector: {matchLabels: {writer: lh-data-kwwlx}}
+  template:
+    metadata: {labels: {writer: lh-data-kwwlx, app: lh-test}}
+    spec:
+      containers:
+      - name: writer
+        image: busybox:1.36
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          if test -f /data/created-at; then echo "CONTINUITY=EXISTING-DATA seen at $(date -u +%FT%TZ) nodes=$HOSTNAME" >> /data/start-log; else date -u +%FT%TZ > /data/created-at; echo "CONTINUITY=FRESH-VOLUME nodes=$HOSTNAME $(cat /data/created-at)" >> /data/start-log; fi
+          i=0
+          while true; do i=$((i+1)); echo "seq=$i ts=$(date -u +%FT%TZ) node=$HOSTNAME" >> /data/counter; sleep 30; done
+        volumeMounts: [{name: data, mountPath: /data}]
+      volumes: [{name: data, persistentVolumeClaim: {claimName: lh-test-10g}}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lh-data-ngzmb
+  namespace: default
+  labels: {app: lh-test}
+spec:
+  replicas: 1
+  selector: {matchLabels: {writer: lh-data-ngzmb}}
+  template:
+    metadata: {labels: {writer: lh-data-ngzmb, app: lh-test}}
+    spec:
+      containers:
+      - name: writer
+        image: busybox:1.36
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          if test -f /data/created-at; then echo "CONTINUITY=EXISTING-DATA seen at $(date -u +%FT%TZ) nodes=$HOSTNAME" >> /data/start-log; else date -u +%FT%TZ > /data/created-at; echo "CONTINUITY=FRESH-VOLUME nodes=$HOSTNAME $(cat /data/created-at)" >> /data/start-log; fi
+          i=0
+          while true; do i=$((i+1)); echo "seq=$i ts=$(date -u +%FT%TZ) node=$HOSTNAME" >> /data/counter; sleep 30; done
+        volumeMounts: [{name: data, mountPath: /data}]
+      volumes: [{name: data, persistentVolumeClaim: {claimName: lh-test-20g}}]

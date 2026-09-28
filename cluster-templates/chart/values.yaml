@@ -18,7 +18,7 @@ kubernetesVersion: "v1.33.13+rke2r1"
 cloudCredentialSecretName: "<REPLACE_ME_CLOUD_CREDENTIAL>"
 
 # --- Harvester provider defaults (per-pool overrides possible below) ---
-vmNamespace: "<REPLACE_ME_VM_NAMESPACE>"        # e.g. k8s-infra
+vmNamespace: "<REPLACE_ME_VM_NAMESPACE>"        # e.g. k8s-vms
 networkName: "<REPLACE_ME_NETWORK>"             # <ns>/<network>, must exist on Harvester
 imageName: "<REPLACE_ME_IMAGE>"                 # VMImage displayName, must exist on Harvester
 diskSize: 80                                    # GiB — root disk (example)

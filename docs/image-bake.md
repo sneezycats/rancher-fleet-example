@@ -23,7 +23,7 @@ immutable; patching done by image replacement (the git hop), never in place.
 
 ## Bake mechanics
 
-Copy the bake script per upstream version (bake-v3g-*.sh style), swap
+Copy the bake script per upstream version (bake-<version>-*.sh style), swap
 `SRC`/`OUT` tags, run (guestfish + virt-customize), stage the qcow behind a
 static URL, import on Harvester as a VMImage with a flat
 `sourceType: download`, the right storage class (migratable), and

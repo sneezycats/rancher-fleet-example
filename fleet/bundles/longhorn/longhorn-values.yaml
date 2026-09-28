@@ -1,0 +1,15 @@
+# Longhorn bundle values (EXAMPLE)
+# Production-shaped defaults: 3 replicas across >= 3 workers — this is what
+# makes node drain / machine replacement survivable for all volumes.
+# Adjust counts to your topology (>= 3 replicas recommended for the
+# volume-survives-node-replacement guarantee).
+
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 3
+
+defaultSettings:
+  # Match the storage class default so all volumes get the 3-replica shape.
+  defaultReplicaCount: "3"
+  # Fail rather than silently schedule 2 replicas of a volume on one node.
+  replicaZoneSoftAntiAffinity: true

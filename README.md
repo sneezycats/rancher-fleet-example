@@ -86,4 +86,6 @@ always their own commit, separate from cluster upgrades.
   (immutable `/`, masked autopatch, cloud-final fix).
 - `docs/custom-sl-micro-longhorn-image.md` — full step-by-step golden-image bake
   guide (build host setup → bake → verify → import).
-- `docs/promotion-model.md` — branch-per-environment promotion, validated.
+- `docs/promotion-model.md` — the branch-per-environment promotion model:
+  dev → staging → production by PR merge, verification gates, hotfixes and
+  rollback (validated in-lab).

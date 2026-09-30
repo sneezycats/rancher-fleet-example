@@ -1,7 +1,10 @@
-# Golden image: the change-set vs upstream (no step-by-step guide)
+# Golden image: the change-set vs upstream
 
 Purpose: one image for both control-plane and worker nodes; runtime OS root
 immutable; patching done by image replacement (the git hop), never in place.
+
+> Step-by-step procedure (build host → bake → verify → import):
+> [`custom-sl-micro-longhorn-image.md`](custom-sl-micro-longhorn-image.md) in this directory.
 
 ## Changes vs the upstream qcow
 

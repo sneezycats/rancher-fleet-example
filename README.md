@@ -43,7 +43,8 @@ data continuity. **No UI clicks, no imperative tooling.**
    (cloud credential, VM namespace/network, image present on your Harvester,
    ssh user, cloud-init user data — never commit real keys).
 2. **Ensure the image + storage class exist** on your Harvester (see
-   `docs/image-bake.md` for the golden-image approach).
+   `docs/image-bake.md` for the change-set, and
+   `docs/custom-sl-micro-longhorn-image.md` to bake one from scratch).
 3. **Create the GitRepos** (`resources/gitrepos/*.yaml`, adjusted to your git
    host + branch strategy) and apply against your Rancher's kubeconfig.
 4. **Deploy**: either let Fleet install the template bundle from the GitRepo,
@@ -83,4 +84,6 @@ always their own commit, separate from cluster upgrades.
   process, Fleet behaviors (including the footguns we recorded).
 - `docs/image-bake.md` — what the golden image changes vs upstream, and why
   (immutable `/`, masked autopatch, cloud-final fix).
+- `docs/custom-sl-micro-longhorn-image.md` — full step-by-step golden-image bake
+  guide (build host setup → bake → verify → import).
 - `docs/promotion-model.md` — branch-per-environment promotion, validated.

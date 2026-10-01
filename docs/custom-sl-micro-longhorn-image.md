@@ -12,6 +12,13 @@ per-node manual steps.
 **Companion doc:** `image-bake.md` (same directory) — the change-set vs upstream; this
 document is the full step-by-step procedure.
 
+> **Provenance:** this guide documents a reference lab. Paths like
+> `build:~/…` and references to companion documents outside this repo
+> (`longhorn-maintenance-behavior.md`, `cdi-vmimage-import-howto.md`,
+> `harvester-longhorn-single-mig-sc.yaml`, `docs/bootcmd-vs-runcmd.md`)
+> point at that lab's build host and doc set — substitute your own
+> equivalents.
+
 ---
 
 ## 1. Why bake it into the image?
@@ -381,16 +388,18 @@ suppression.
 ### 4.1 Structure check (no boot required)
 
 ```bash
-sudo -E guestfish --ro -a slmicro-build.qcow2 -i <<'EOF'
+sudo -E guestfish --ro -a slmicro-6.2-longhorn-v4g.qcow2 -i <<'EOF'
 sh "ls -la /usr/local/sbin/longhorn-setup.sh"
 sh "ls -la /etc/systemd/system/slmicro-longhorn-setup.service"
 sh "ls -la /etc/systemd/system/basic.target.wants/slmicro-longhorn-setup.service"
-sh "ls -la /etc/systemd/system/ | grep -E 'transactional|rebootmgr'"
+sh "ls -la /etc/systemd/system/ | grep -E 'transactional|rebootmgr|health'"
 EOF
 ```
 
-Expect: the script, the unit, the basic.target wants symlink, and all three
-`/dev/null` masks present.
+Expect: the script, the unit, the basic.target wants symlink, and all four
+`/dev/null` masks present — `transactional-update.timer`,
+`transactional-update.service`, `rebootmgr.service`, `health-checker.service`
+(§3.1).
 
 ### 4.2 Live-boot check (the real proof)
 
@@ -466,5 +475,5 @@ Lab artifacts below live on the build host; adjust paths for your environment.
 | Built golden images (current) | `build: ~/slmicro-build/slmicro-{6.0,6.1,6.2}-longhorn-v4g.qcow2` (v3g retained) |
 | Staging / archive helper | `build: ~/slmicro-build/image-store.sh` — LOCAL/CDI/ARCHIVE tiers + hash-checked manifest |
 | Import walkthrough | `cdi-vmimage-import-howto.md` (build: `~/harvester/`) |
-| VMI names (Harvester) | `sl-micro-longhorn-{6.0,6.1,6.2}-<generation>` (e.g. `…-v4g`) — must match the chart `imageName` |
+| VMI (Harvester) | displayName `sl-micro-longhorn-{6.0,6.1,6.2}-<generation>` (e.g. `…-v4g`) — must match the chart `imageName` (§5; give the VMI the same name to keep name and displayName aligned) |
 | Source SL Micro images | `build: ~/slmicro-build/SL-Micro.x86_64-6.{0,1,2}-Default-qcow-GM*.qcow2` (licensed copies) |

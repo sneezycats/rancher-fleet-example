@@ -30,6 +30,7 @@ data continuity. **No UI clicks, no imperative tooling.**
 
 ```
 ├── cluster-templates/chart/        # the cluster template (Helm chart)
+│   ├── Chart.yaml + templates/     # renders the Cluster + HarvesterConfig CRs
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
 ├── fleet/bundles/longhorn/         # Longhorn bundle (two modes: repo-pinned + vendored) + values pin
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
@@ -41,10 +42,15 @@ data continuity. **No UI clicks, no imperative tooling.**
 
 1. **Replace every `<REPLACE_ME_*>`** in `cluster-templates/chart/values.yaml`
    (cloud credential, VM namespace/network, image present on your Harvester,
-   ssh user, cloud-init user data — never commit real keys).
+   ssh user, cloud-init user data — never commit real keys). The GitRepo CRs
+   in `resources/gitrepos/` carry the same placeholders (git host, branch,
+   names) — set those when you apply them in step 3.
 2. **Ensure the image + storage class exist** on your Harvester (see
    `docs/image-bake.md` for the change-set, and
    `docs/custom-sl-micro-longhorn-image.md` to bake one from scratch).
+   Note: the example chart attaches one root disk per node, so the golden
+   image's dedicated-data-disk unit skips safely in this shape — see §7 of
+   the bake guide for when a dedicated data disk is (and is not) needed.
 3. **Create the GitRepos** (`resources/gitrepos/*.yaml`, adjusted to your git
    host + branch strategy) and apply against your Rancher's kubeconfig.
 4. **Deploy**: either let Fleet install the template bundle from the GitRepo,
@@ -53,8 +59,11 @@ data continuity. **No UI clicks, no imperative tooling.**
 5. **Label the cluster** once it is Ready:
    `kubectl label clusters.fleet.cattle.io -n fleet-default <cluster> managed-by=fleet`
    → Longhorn deploys from its bundle.
-6. **Data layer + verification**: `scripts/` (PVCs + writers + baseline/verify)
-   — the audit artifact for every future round.
+6. **Data layer + verification**: apply the data layer against the new
+   cluster's kubeconfig (`kubectl apply -f scripts/01-pvcs.yaml -f
+   scripts/02-data-deployments.yaml`), then capture a baseline with
+   `scripts/baseline.sh` before every round and run `scripts/verify.sh`
+   after — the audit artifact for every future round.
 
 ## Longhorn bundle: two modes, pick one
 

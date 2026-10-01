@@ -8,9 +8,11 @@
 name: ""
 description: ""
 
-# Kubernetes version — pick from the Rancher support matrix for YOUR Rancher
-# version (https://www.suse.com/suse-rancher/support-matrix/...). Example: an
-# older, well-supported pin is a good baseline for upgrade-ladder labs.
+# Kubernetes version — MUST be validated against the Rancher Support Matrix
+# for YOUR Rancher version before deploying:
+# https://www.suse.com/suse-rancher/support-matrix/
+# Example: an older, well-supported pin is a good baseline for
+# upgrade-ladder labs.
 kubernetesVersion: "v1.33.13+rke2r1"
 
 # Rancher cloud credential (created in the Rancher UI against your Harvester).

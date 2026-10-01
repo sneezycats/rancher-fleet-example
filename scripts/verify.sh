@@ -42,8 +42,7 @@ for pvc in b["volumes"]:
     if v.get("robustness") and st.get("robustness")!=v["robustness"]: fails.append("{}: robustness {} -> {}".format(pvc,v["robustness"],st.get("robustness")))
     if st.get("robustness")!="healthy": fails.append("{}: robustness={} (want healthy)".format(pvc,st.get("robustness")))
     if cond.get("Scheduled")!="True": fails.append("{}: not scheduled".format(pvc))
-    suffix={"5g":"4bd9k","10g":"kwwlx","20g":"ngzmb"}[pvc.split("-")[2]]
-    pod=[l.split()[0] for l in kb("get","pods","-n","default","--no-headers").splitlines() if ("lh-data-"+suffix) in l.split()[0]]
+    pod=kb("get","pods","-n","default","-l","data-vol="+pvc,"-o","jsonpath={.items[*].metadata.name}").split()
     if not pod:
         fails.append("{}: no writer pod".format(pvc)); continue
     ca=kb("exec","-n","default",pod[0],"--","cat","/data/created-at")

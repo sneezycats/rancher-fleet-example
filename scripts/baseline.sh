@@ -33,9 +33,7 @@ for pvc in ["lh-test-5g","lh-test-10g","lh-test-20g"]:
         "scheduled":cond.get("Scheduled"),
         "replicas":replicas_for(vol),"replicaCount":0,
         "created_at":None,"counter_lines":0}
-    pods=kb("get","pods","-n","default","--no-headers").splitlines()
-    suffix={"5g":"4bd9k","10g":"kwwlx","20g":"ngzmb"}[pvc.split("-")[2]]
-    pod=[l.split()[0] for l in pods if ("lh-data-"+suffix) in l.split()[0]]
+    pod=kb("get","pods","-n","default","-l","data-vol="+pvc,"-o","jsonpath={.items[*].metadata.name}").split()
     if pod:
         bl["volumes"][pvc]["created_at"]=kb("exec","-n","default",pod[0],"--","cat","/data/created-at")
         bl["volumes"][pvc]["counter_lines"]=int(kb("exec","-n","default",pod[0],"--","sh","-c","wc -l < /data/counter").split()[0])

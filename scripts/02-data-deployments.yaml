@@ -1,16 +1,18 @@
 # One writer per test PVC; each pod verifies data continuity on start.
+# The data-vol label maps each writer to its PVC — baseline.sh / verify.sh
+# select writer pods by it (never by generated deployment/pod names).
 # Files on /data: created-at (once), counter (appends every 30s), start log.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lh-data-4bd9k
   namespace: default
-  labels: {app: lh-test}
+  labels: {app: lh-test, data-vol: lh-test-5g}
 spec:
   replicas: 1
   selector: {matchLabels: {writer: lh-data-4bd9k}}
   template:
-    metadata: {labels: {writer: lh-data-4bd9k, app: lh-test}}
+    metadata: {labels: {writer: lh-data-4bd9k, app: lh-test, data-vol: lh-test-5g}}
     spec:
       containers:
       - name: writer
@@ -29,12 +31,12 @@ kind: Deployment
 metadata:
   name: lh-data-kwwlx
   namespace: default
-  labels: {app: lh-test}
+  labels: {app: lh-test, data-vol: lh-test-10g}
 spec:
   replicas: 1
   selector: {matchLabels: {writer: lh-data-kwwlx}}
   template:
-    metadata: {labels: {writer: lh-data-kwwlx, app: lh-test}}
+    metadata: {labels: {writer: lh-data-kwwlx, app: lh-test, data-vol: lh-test-10g}}
     spec:
       containers:
       - name: writer
@@ -53,12 +55,12 @@ kind: Deployment
 metadata:
   name: lh-data-ngzmb
   namespace: default
-  labels: {app: lh-test}
+  labels: {app: lh-test, data-vol: lh-test-20g}
 spec:
   replicas: 1
   selector: {matchLabels: {writer: lh-data-ngzmb}}
   template:
-    metadata: {labels: {writer: lh-data-ngzmb, app: lh-test}}
+    metadata: {labels: {writer: lh-data-ngzmb, app: lh-test, data-vol: lh-test-20g}}
     spec:
       containers:
       - name: writer

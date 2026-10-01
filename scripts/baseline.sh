@@ -3,6 +3,7 @@
 # counter lines, replica placement. Output: baseline.json (overwrites).
 set -euo pipefail
 KC=${CLUSTER_KUBECONFIG:-/tmp/<cluster>-kubeconfig.yaml}
+[ -f "$KC" ] || { echo "FATAL: kubeconfig not found: $KC — set CLUSTER_KUBECONFIG=<path-to-cluster-kubeconfig>"; exit 2; }
 D=$(cd "$(dirname "$0")" && pwd)
 OUT=$D/baseline.json
 echo "capturing baseline: $(date -u +%FT%TZ)"

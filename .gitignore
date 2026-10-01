@@ -1,0 +1,3 @@
+# Data-continuity baseline captured by scripts/baseline.sh — live cluster
+# state (uids, replica placement), regenerated every round: keep out of git.
+scripts/baseline.json

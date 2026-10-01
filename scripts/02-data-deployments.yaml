@@ -1,4 +1,4 @@
-# One writer per worker; each pod verifies data continuity on start.
+# One writer per test PVC; each pod verifies data continuity on start.
 # Files on /data: created-at (once), counter (appends every 30s), start log.
 apiVersion: apps/v1
 kind: Deployment

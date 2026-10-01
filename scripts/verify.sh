@@ -1,9 +1,10 @@
-# EXAMPLE skeleton: run with CLUSTER_KUBECONFIG=<kubeconfig> ./verify.sh
 #!/bin/bash
+# EXAMPLE skeleton: run with CLUSTER_KUBECONFIG=<kubeconfig> ./verify.sh
 # Verify trackable data survived the round: baseline identity intact,
 # created-at unchanged, counters still growing, volumes attached+healthy.
 set -uo pipefail
 KC=${CLUSTER_KUBECONFIG:-/tmp/<cluster>-kubeconfig.yaml}
+[ -f "$KC" ] || { echo "FATAL: kubeconfig not found: $KC — set CLUSTER_KUBECONFIG=<path-to-cluster-kubeconfig>"; exit 2; }
 D=$(cd "$(dirname "$0")" && pwd)
 [ -f "$D/baseline.json" ] || { echo "FATAL: no baseline.json — run baseline.sh first"; exit 2; }
 python3 - "$KC" "$D/baseline.json" <<'PY'
@@ -36,7 +37,7 @@ for pvc in b["volumes"]:
     if vol!=v["volume"]: fails.append("{}: volume identity changed".format(pvc))
     if len(reps) < v["replicaCount"]: fails.append("{}: replica count dropped ({} -> {})".format(pvc,v["replicaCount"],len(reps)))
     if st.get("state")!="attached": fails.append("{}: state={} (want attached)".format(pvc,st.get("state")))
-    if v.get("replicaCount")==v["replicaCount"] and reps!=v["replicas"]:
+    if len(reps)==v["replicaCount"] and reps!=v["replicas"]:
         print("  note: replica NODES changed {} -> {} (expected across a hop)".format(v["replicas"],reps))
     if v.get("robustness") and st.get("robustness")!=v["robustness"]: fails.append("{}: robustness {} -> {}".format(pvc,v["robustness"],st.get("robustness")))
     if st.get("robustness")!="healthy": fails.append("{}: robustness={} (want healthy)".format(pvc,st.get("robustness")))

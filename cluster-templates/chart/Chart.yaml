@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 name: rke2-harvester-example
 description: "Cluster template: RKE2 on Harvester (example skeleton)"
 version: 0.1.0

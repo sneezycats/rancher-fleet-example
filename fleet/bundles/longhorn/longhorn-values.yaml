@@ -11,5 +11,9 @@ persistence:
 defaultSettings:
   # Match the storage class default so all volumes get the 3-replica shape.
   defaultReplicaCount: "3"
-  # Fail rather than silently schedule 2 replicas of a volume on one node.
-  replicaZoneSoftAntiAffinity: true
+  # Do not stack two replicas of the same volume on one node (Longhorn
+  # replica-soft-anti-affinity): when distinct nodes are short, the volume
+  # stays degraded — loud — instead of silently co-locating. Zone-level
+  # spreading is a separate setting (replicaZoneSoftAntiAffinity) for
+  # zonal clusters.
+  replicaSoftAntiAffinity: "false"

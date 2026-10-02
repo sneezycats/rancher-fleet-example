@@ -52,6 +52,7 @@ nodepools:
     vcpu: 6
     memory: 6
     disk: 80
+    # control-plane pools are NOT drained — Rancher default/convention.
   - name: workers
     etcd: false
     controlplane: false
@@ -60,3 +61,10 @@ nodepools:
     vcpu: 6
     memory: 4
     disk: 160
+    # Drain the node BEFORE deleting its VM. Without this the Fleet path
+    # deletes the VM in parallel with the deletion signal (hook-blind):
+    # Longhorn gets no window and the eviction controller relocation races a
+    # 21-46s teardown. drainBeforeDeleteTimeout bounds a wedged drain
+    # (empty/0 = infinite); 1h is generous vs the ~30-60s relocation window.
+    drainBeforeDelete: true
+    drainBeforeDeleteTimeout: 3600s

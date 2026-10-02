@@ -28,6 +28,8 @@ spec:
         etcdRole: {{ $pool.etcd | default false }}
         workerRole: {{ $pool.worker | default false }}
         quantity: {{ $pool.quantity | default 1 }}
+        drainBeforeDelete: {{ $pool.drainBeforeDelete | default false }}
+        drainBeforeDeleteTimeout: {{ $pool.drainBeforeDeleteTimeout | default "" | quote }}
         machineOS: linux
         machineConfigRef:
           kind: HarvesterConfig

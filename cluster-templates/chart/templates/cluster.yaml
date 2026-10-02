@@ -29,7 +29,9 @@ spec:
         workerRole: {{ $pool.worker | default false }}
         quantity: {{ $pool.quantity | default 1 }}
         drainBeforeDelete: {{ $pool.drainBeforeDelete | default false }}
-        drainBeforeDeleteTimeout: {{ $pool.drainBeforeDeleteTimeout | default "" | quote }}
+        {{- with $pool.drainBeforeDeleteTimeout }}
+        drainBeforeDeleteTimeout: {{ . | quote }}
+        {{- end }}
         machineOS: linux
         machineConfigRef:
           kind: HarvesterConfig

@@ -16,7 +16,20 @@ description: ""
 kubernetesVersion: "v1.33.13+rke2r1"
 
 # Rancher cloud credential (created in the Rancher UI against your Harvester).
-#   Format: <credential-scope>:<id>  (look it up: kubectl get cloudcredentials -A)
+# There is no kubectl 'cloudcredentials' resource — Rancher materializes each
+# credential as an opaque Secret in the management cluster's cattle-global-data
+# namespace, named cc-<id>; the UI-visible name is kept in its
+# field.cattle.io/name annotation. The provisioning value is
+# <namespace>:<credential-secret-name>, e.g. cattle-global-data:cc-<id>.
+# The Harvester driver reads this data field from that secret:
+#   harvestercredentialConfig-clusterId   (Rancher Cluster ID, base64)
+# Pull it directly (script optional):
+#   kubectl -n cattle-global-data get secret cc-<id> \
+#     -o jsonpath='{.data.harvestercredentialConfig-clusterId}' | base64 -d
+#   (sibling keys: harvestercredentialConfig-clusterType, ...-kubeconfigContent)
+# To find cc-<id> by UI name (helper, optional):
+#   kubectl -n cattle-global-data get secrets -o json \
+#     | python3 cluster-templates/scripts/cc-lookup.py <UI_NAME>
 cloudCredentialSecretName: "<REPLACE_ME_CLOUD_CREDENTIAL>"
 
 # --- Harvester provider defaults (per-pool overrides possible below) ---

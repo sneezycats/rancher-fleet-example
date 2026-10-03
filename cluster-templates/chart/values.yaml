@@ -15,15 +15,16 @@ description: ""
 # upgrade-ladder labs.
 kubernetesVersion: "v1.33.13+rke2r1"
 
-# Rancher cloud credential (created in the Rancher UI against your Harvester).
-# Use the secret's NAME — the cc-<id> identifier, e.g. cattle-global-data:cc-<id>.
-# NOT the display label (field.cattle.io/name) and NOT any data field; both
-# the name and the ID are visible in the Rancher UI. kubectl only if scripting:
-#   kubectl -n cattle-global-data get secret cc-<id> -o yaml   # metadata.name
-# Optional CLI helper (label -> cc-<id>):
+# Rancher cloud credential — from the Rancher UI's Cloud Credentials page,
+# take the ID (the "cc-..." identifier), NOT the friendly name column.
+# Prefix it with the namespace Rancher stores the secret in — this chart
+# passes the value through verbatim, so include the namespace. cc-<id> is the
+# Secret name (metadata.name) in cattle-global-data; the friendly UI name
+# lives only in the secret's field.cattle.io/name annotation. Optional helper
+# if scripting (label -> cc-<id>):
 #   kubectl -n cattle-global-data get secrets -o json \
 #     | python3 cluster-templates/scripts/cc-lookup.py <LABEL>
-cloudCredentialSecretName: "<REPLACE_ME_CLOUD_CREDENTIAL>"
+cloudCredentialSecretName: "cattle-global-data:cc-<id>"  # ID from the UI, with namespace
 
 # --- Harvester provider defaults (per-pool overrides possible below) ---
 vmNamespace: "<REPLACE_ME_VM_NAMESPACE>"        # e.g. k8s-vms

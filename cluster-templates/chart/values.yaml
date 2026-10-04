@@ -74,4 +74,10 @@ nodepools:
     # 21-46s teardown. drainBeforeDeleteTimeout bounds a wedged drain
     # (empty/0 = infinite); 1h is generous vs the ~30-60s relocation window.
     drainBeforeDelete: true
-    drainBeforeDeleteTimeout: 3600s
+    # Duration in canonical Go form (1h0m0s, not 3600s): Rancher normalizes
+    # duration strings through time.Duration and rewrites them, so a
+    # non-canonical chart value reads as a change to a field the rancher
+    # manager owns - an SSA conflict that blocks the whole bundle. The
+    # fleet.yaml beside this chart sets helm.takeOwnership: true so Fleet
+    # force-applies the Cluster spec.
+    drainBeforeDeleteTimeout: 1h0m0s

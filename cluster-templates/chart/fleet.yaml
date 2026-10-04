@@ -1,0 +1,17 @@
+# Fleet bundle options for the cluster template chart (this directory).
+#
+# takeOwnership is REQUIRED here. Rancher owns and rewrites some fields on the
+# provisioning Cluster CR (observed: drainBeforeDeleteTimeout rewritten from
+# 1200s to 20m0s by the rancher field manager). Without ownership the Fleet
+# server-side apply hits a conflict with the rancher manager and the ENTIRE
+# bundle is blocked: the cluster silently stops tracking git. The bundle shows
+# 0/1 WaitApplied and the real error is only visible in the fleet-agent logs:
+#   kubectl -n cattle-fleet-local-system logs deploy/fleet-agent | grep conflict
+# takeOwnership makes the agent force-apply, so git stays authoritative.
+#
+# This chart pins fleet-default in its own manifests, so defaultNamespace is
+# deliberately NOT set (GOTCHA from the other bundles: helm namespace keys are
+# silently dropped in this Fleet era; changing the release namespace now would
+# re-install the release instead of upgrading it).
+helm:
+  takeOwnership: true

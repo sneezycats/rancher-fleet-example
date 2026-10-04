@@ -24,7 +24,7 @@ reviewable commit, and promotion is a branch merge.
 **Upgrade flow:** change a value → commit → push → Fleet `helm upgrade` →
 config hash changes → CAPI rolls machines (new nodes join before old are
 deleted) → Longhorn rebuilds replicas onto the new nodes → `verify.sh` proves
-data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them —  has the full taxonomy, the verification chain, and the pitfalls.
+data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them — `UPGRADE.md` has the full taxonomy, the verification chain, and the pitfalls.
 
 ## Repository layout
 
@@ -89,7 +89,7 @@ always their own commit, separate from cluster upgrades.
 
 ## Docs
 
--  — the change-day runbook: what each values edit does
+- `UPGRADE.md` — the change-day runbook: what each values edit does
   (scale vs roll), the verification chain, and the field-ownership pitfalls
   (start here before touching a running cluster).
 - `docs/gitrepo-fleet-clustertemplate.md` — layers, GitRepo schema, creation

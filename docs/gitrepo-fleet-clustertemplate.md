@@ -71,5 +71,5 @@ commit: the repo is the canonical description of the cluster.
 ---
 
 The change-day runbook — what each values edit does, the verification chain,
-and the field-ownership pitfalls with resolutions — lives in  at
+and the field-ownership pitfalls with resolutions — lives in `UPGRADE.md` at
 the repo root.

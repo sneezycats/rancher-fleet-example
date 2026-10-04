@@ -67,3 +67,9 @@ spec:
 UI changes to a live cluster converge on the same mechanism (config content
 hash -> machine roll). Whatever path you used, sync the chart values back and
 commit: the repo is the canonical description of the cluster.
+
+---
+
+The change-day runbook — what each values edit does, the verification chain,
+and the field-ownership pitfalls with resolutions — lives in  at
+the repo root.

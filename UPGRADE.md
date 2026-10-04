@@ -177,6 +177,47 @@ converges to the previous render; rolls and scales unwind the same way they
 went in (scale-down drains workers first). The canonical-duration and
 takeOwnership safeguards make re-renders converge in either direction.
 
+## The optional lhcc-rbac bundle (Longhorn CAPI controller identity)
+
+`fleet/bundles/lhcc-rbac/` ships the **guest-cluster identity** for the
+optional longhorn-capi-controller (lhcc). What it deploys INTO a cluster:
+the `lhcc-eviction-agent` ServiceAccount (kube-system), its never-expiring
+token Secret, a least-privilege ClusterRole, and the binding. Nothing else —
+no controller, no workloads, and it is inert on its own.
+
+**Do you need it?**
+
+- Plain Longhorn: **NO**. With >= 3 replicas across >= 3 workers, Longhorn's
+  native replication survives a node drain/replacement on its own: pods
+  reschedule, volumes serve from the surviving replicas, the lost replica
+  rebuilds itself. The bundle would sit unused.
+- Running the controller on the management cluster (automated node
+  replacement, drain gating, orphaned-replica cleanup): **YES**. Without the
+  identity, a provisioned cluster gets Longhorn but no eviction agent —
+  coverage silently absent exactly when a node is replaced.
+
+**Wiring (when you run the controller):**
+
+1. Ship the bundle with Longhorn: add `fleet/bundles/lhcc-rbac` to the
+   Longhorn GitRepo `paths` (see the commented line in
+   `resources/gitrepos/longhorn.yaml`) so every labeled cluster gets the
+   identity alongside Longhorn.
+2. Pair it on the management side once the bundle converges — the script
+   ships with the controller repo:
+
+       lhcc-setup-workload-identity.sh --workload-kubeconfig <admin-kc> --cluster <cluster-id>
+
+   It creates the `<cluster>-lhcc-kubeconfig` Secret in `fleet-default`,
+   which the controller (v0.11.0+) resolves per cluster. Prefer a stable
+   LB/DNS `--server` endpoint — node IPs change when VMs are replaced.
+3. Deploy the controller itself on the management cluster per its repo
+   README (kustomize; pin the image tag; latest release: v0.11.1).
+
+**Version discipline:** the templates here are copies of the upstream
+`longhorn-capi-controller/config/rbac/workload_role.yaml` — on upstream
+change, bump the chart version and re-copy (see
+`fleet/bundles/lhcc-rbac/README.md`).
+
 ## Troubleshooting
 
 | Symptom | Where the truth is | Cause → resolution |

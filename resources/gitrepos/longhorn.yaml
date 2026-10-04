@@ -9,6 +9,10 @@ spec:
   branch: "<REPLACE_ME_BRANCH>"
   paths:
   - fleet/bundles/longhorn
+  # OPTIONAL: also ship the guest identity for the longhorn-capi-controller
+  # (inert without the controller). See UPGRADE.md, "The optional lhcc-rbac
+  # bundle", before uncommenting.
+  # - fleet/bundles/lhcc-rbac
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
   targets:
   - clusterSelector:

@@ -33,6 +33,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 │   ├── Chart.yaml + templates/     # renders the Cluster + HarvesterConfig CRs
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
 ├── fleet/bundles/longhorn/         # Longhorn bundle (two modes: repo-pinned + vendored) + values pin
+├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
 └── docs/                           # this approach, documented
@@ -76,7 +77,10 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
   needs a `helm pull` + replace + commit on a build host.
 
 Swap between them by which fleet.yaml is deployed. Longhorn upgrades are
-always their own commit, separate from cluster upgrades.
+always their own commit, separate from cluster upgrades. The optional
+`lhcc-rbac` bundle rides the same GitRepo (one extra path in
+`resources/gitrepos/longhorn.yaml`) and pairs a cluster with the Longhorn
+CAPI controller — see UPGRADE.md before wiring it.
 
 ## Rules that make it safe (lab-enforced)
 

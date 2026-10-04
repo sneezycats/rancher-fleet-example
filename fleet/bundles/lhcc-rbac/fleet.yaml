@@ -1,0 +1,27 @@
+# Longhorn CAPI controller — guest-cluster identity bundle (vendored mode).
+#
+# Applies the least-privilege workload identity INSIDE each labeled guest
+# cluster: ServiceAccount lhcc-eviction-agent + never-expiring token Secret +
+# ClusterRole + binding. A cluster that gets Longhorn should ALSO get this
+# bundle (same GitRepo path list / clusterSelector), or the
+# longhorn-capi-controller on the management side has no credential to reach
+# it and Longhorn coverage silently goes dark.
+#
+# VENDORED MODE: the chart IS the content (4 static resources, no upstream
+# chart — unlike longhorn, there is nothing to pull). The version pin lives in
+# the Chart.yaml. Upgrade = bump version + diff templates, commit, push.
+#
+# After this bundle converges, run the mgmt-side pairing step to hand the new
+# credential to the controller:
+#   lhcc-setup-workload-identity.sh --workload-kubeconfig <admin-kc> --cluster <id>
+# (ships with longhorn-capi-controller; creates <cluster>-lhcc-kubeconfig on
+# the management cluster).
+#
+# GOTCHA (Fleet 2.14/2.15): namespace must be the TOP-LEVEL defaultNamespace
+# string; helm.* namespace keys are silently dropped. The manifests declare
+# kube-system explicitly, so the release namespace here is cosmetic.
+defaultNamespace: kube-system
+helm:
+  chart: ./lhcc-rbac-chart
+  releaseName: lhcc-rbac
+  takeOwnership: true

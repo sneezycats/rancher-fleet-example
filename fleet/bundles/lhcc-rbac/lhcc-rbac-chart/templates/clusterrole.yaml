@@ -1,0 +1,46 @@
+# Managed from longhorn-capi-controller config/rbac/workload_role.yaml (do not edit here).
+# Everything the controller reads or mutates on a workload cluster, and
+# nothing more (verified against the call sites in internal/controller/ and
+# by a full machine-deletion cycle under this exact role — zero forbidden).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-capi-eviction-workload
+  labels:
+    app.kubernetes.io/name: longhorn-capi-controller
+    app.kubernetes.io/component: workload-rbac
+rules:
+  # nodes: cordon (patch), eviction request (patch), health & placement reads,
+  # and snode GC cleanup (delete + finalizer work).
+  - apiGroups: ["longhorn.io"]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch", "delete"]
+  - apiGroups: ["longhorn.io"]
+    resources: ["nodes/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["longhorn.io"]
+    resources: ["nodes/status"]
+    verbs: ["get"]
+  # replicas: locate and delete departing-node replicas to force rebuilds.
+  - apiGroups: ["longhorn.io"]
+    resources: ["replicas"]
+    verbs: ["get", "list", "watch", "delete"]
+  # volumes: read exposure state; CRIT-1b relocation patches
+  # spec.numberOfReplicas (raise for immediate rebuild, restore on release).
+  - apiGroups: ["longhorn.io"]
+    resources: ["volumes"]
+    verbs: ["get", "list", "watch", "patch"]
+  # pods: EvictStuckPods lists cluster-wide by spec.nodeName and force-deletes
+  # non-DaemonSet pods holding PVCs on the departing node.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  # PVCs: map pods to volumes via claimRef.
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list"]
+  # core nodes: cordon the departing node (spec.unschedulable) and health
+  # reads.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch"]

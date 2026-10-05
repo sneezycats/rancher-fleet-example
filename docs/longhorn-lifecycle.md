@@ -4,14 +4,16 @@ The operating contract for clusters built by the cluster template with
 Longhorn volumes aboard: what makes replacement safe, what to run before and
 after a change, and the settings that carry the guarantees.
 
-*Provenance (2026-10-05, Rancher 2.14.3 + Longhorn 1.11.2, in-lab): full
-serial rolls of all six machines with volume data aboard, verified by
+*Provenance (2026-10-05, Rancher 2.14.3 + Longhorn 1.11.2, in-lab): three
+full serial rolls of all six machines with volume data aboard, verified by
 created-at identity, uninterrupted writer counters, and rebuilt 3/3 replica
-placement on the new workers. Two discriminating runs in one day: with the
-optional lhcc controller present (6.1 -> 6.2) and with zero controller
-present (6.2 -> 6.1). Data safety was vendor-native in BOTH runs - zero data
-loss, zero stuck-pod wedges, no manual intervention. One real gap: dead
-nodes' Longhorn node CRs and replicas do NOT self-clean (see the residue
+placement on the new workers. Three regimes in one day: with the optional
+lhcc controller present (6.1 -> 6.2), with zero controller (6.2 -> 6.1), and
+with the vendor eviction policy enabled for the maintenance window (6.1 ->
+6.2, including a single-replica volume - the vendor evicted its last replica
+off the doomed node before allowing the drain; the volume stayed attached and
+healthy throughout). Data safety was vendor-native in ALL regimes. One real
+gap: dead nodes' node CRs and replicas do NOT self-clean (see the residue
 step below).*
 
 ## The contract (what makes replacement safe)
@@ -51,6 +53,20 @@ scheduled, and the baseline captured:
 **1. Make the change** (`imageName` / `kubernetesVersion` / pool size) in
 `cluster-templates/chart/values.yaml` — one component per commit — and push.
 The full pipeline behavior is in UPGRADE.md.
+
+**1b. Open the roll window** (recommended for automated upgrade pipelines):
+the vendor can evict last-replicas off doomed nodes itself — flip the drain
+policy for the window and flip it back after (SUSE guidance: not for
+permanent use; it triggers on ANY cordon):
+
+    CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-roll-mode.sh on   # before
+    CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-roll-mode.sh off  # after
+
+Validated: with the window open, a single-replica volume's last replica was
+rebuilt onto a surviving worker before its node drained — the volume stayed
+attached and healthy throughout (the default policy would have blocked that
+drain until the timeout). Healthy 3/3 volumes behaved exactly as before: the
+policy only moves replicas that lack a healthy counterpart.
 
 **2. What the roll looks like**: Fleet replaces machines serially — new node
 joins, Longhorn discovers it, old node drains (workload pods reschedule, the
@@ -94,9 +110,13 @@ lag. End state to verify: exactly the current workers in
 
 ## What you should NOT need
 
-Data safety on this path needs NO controller — proven with and without one
-in the same session (both hops: continuous counters, no wedge, rebuilt 3/3,
-zero manual data intervention). The one real residual gap is dead-node
+Data safety on this path needs NO controller — proven across three rolls
+(with the optional controller, without it, and with the vendor eviction
+policy for the window: continuous counters, no wedge, rebuilt 3/3, zero
+manual data intervention each time). The vendor block-for-eviction-if-
+contains-last-replica policy (1.11+) natively covers the pre-drain replica
+eviction the optional controller implemented; flip it for the window per
+step 1b. The one real residual gap is dead-node
 residue cleanup, which the vendor documents as a manual procedure (codified
 above). The optional longhorn-capi-controller automates exactly that
 cleanup; its README carries the when-you-do-not-need-it decision table.

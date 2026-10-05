@@ -32,7 +32,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 ├── cluster-templates/chart/        # the cluster template (Helm chart)
 │   ├── Chart.yaml + templates/     # renders the Cluster + HarvesterConfig CRs
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
-├── fleet/bundles/longhorn/         # Longhorn bundle (two modes: repo-pinned + vendored) + values pin
+├── fleet/bundles/longhorn/         # Longhorn bundle - ONE fleet.yaml: version pin + values
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
@@ -66,21 +66,24 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    `scripts/baseline.sh` before every round and run `scripts/verify.sh`
    after — the audit artifact for every future round.
 
-## Longhorn bundle: two modes, pick one
+## Longhorn bundle: one file, one version field
 
-- **Repo mode** (`fleet.yaml`, default): `helm.repo` + `version:` pin — the
-  chart is fetched at deploy time. **Upgrade = edit one version line in the
-  web UI.** Validated on Rancher 2.14.1 (adopts the existing release in
-  place, no pod churn).
-- **Vendored mode** (`fleet.vendored.yaml`): chart committed at
-  `longhorn-chart/` — deterministic, air-gap friendly, but every upgrade
-  needs a `helm pull` + replace + commit on a build host.
+`fleet/bundles/longhorn/fleet.yaml` carries everything: the chart source
+(`helm.repo` + `chart`), **the version pin — `helm.version`, the only
+version-carrying field in the bundle** — the release name, and the values
+(`helm.values`). Upgrading Longhorn = edit that one `version:` line, commit,
+push; Fleet adopts the existing release in place (validated on Rancher
+2.14.1/2.14.3, no pod churn). Values live in the same file, so version and
+values cannot drift apart.
 
-Swap between them by which fleet.yaml is deployed. Longhorn upgrades are
-always their own commit, separate from cluster upgrades. The optional
-`lhcc-rbac` bundle rides the same GitRepo (one extra path in
-`resources/gitrepos/longhorn.yaml`) and pairs a cluster with the Longhorn
-CAPI controller — see UPGRADE.md before wiring it.
+(An air-gap vendored variant was retired from this repo: if you ever need
+it, vendor the chart into the bundle dir, point `helm.chart` at it, drop
+`repo`/`version`, and let the vendored `Chart.yaml` become the pin.)
+
+Longhorn upgrades are always their own commit, separate from cluster
+upgrades. The optional `lhcc-rbac` bundle rides the same GitRepo (one extra
+path in `resources/gitrepos/longhorn.yaml`) and pairs a cluster with the
+Longhorn CAPI controller — see UPGRADE.md before wiring it.
 
 ## Rules that make it safe (lab-enforced)
 

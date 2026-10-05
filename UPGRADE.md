@@ -38,6 +38,11 @@ Rolling replacement = new VM + node join BEFORE the old machine is deleted;
 the data layer (Longhorn) rebuilds replicas onto the new nodes — run the
 verification round after (see `docs/promotion-model.md`).
 
+Longhorn itself is a separate bundle: `fleet/bundles/longhorn/fleet.yaml`
+carries the chart pin AND the values — upgrading Longhorn means editing the
+one `version:` field there (in-place helm upgrade, no machine roll, data
+plane stays up), always as its own commit with its own verification round.
+
 ### Node-count specifics
 
 - **Workers**: the routine knob. Scale-up joins; scale-down DRAINS first
@@ -235,6 +240,7 @@ change, bump the chart version and re-copy (see
   recorded Fleet behaviors.
 - `docs/promotion-model.md` — how a change reaches production (branches,
   PRs, verification gates, rollback).
-- `fleet/bundles/longhorn/fleet.yaml` — Longhorn upgrade modes: repo mode
-  (one-line `version:` bump) vs vendored mode (re-pull + commit). Longhorn
-  upgrades are always their own commit, separate from cluster changes.
+- `fleet/bundles/longhorn/fleet.yaml` — Longhorn's single config file: the
+  `version:` pin and the values together. Upgrading Longhorn = edit that one
+  version field, commit, push — always its own commit, separate from
+  cluster changes.

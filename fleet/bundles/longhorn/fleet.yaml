@@ -1,25 +1,22 @@
-# Per-path Fleet config - pins the Longhorn chart. TWO supported modes:
+# Per-path Fleet config for the Longhorn bundle - SINGLE MODE, ONE FILE.
 #
-#   REPO MODE (ACTIVE - this file): the chart is fetched by version from a
-#   Helm repository at deploy time. Upgrade = edit `version:` -> commit ->
-#   push - fully web-UI friendly (no local helm / tarballs). The version PIN
-#   and values live in git; the chart lives in the repo.
-#   VALIDATED 2026-09-28 on lab Fleet (Rancher 2.14.1): bundle converged and
-#   ADOPTED the existing release (releaseName + takeOwnership) in place -
-#   rev 1 -> rev 2 on the SAME release, no duplicate install, no pod churn.
+# Everything lives HERE: chart source (repo+chart), THE version pin, the
+# release name, and the values. There is no separate values file and no
+# second mode - this `version:` line is the ONLY version-carrying field in
+# the bundle, so it is the only thing you edit to upgrade Longhorn
+# (validated 2026-09-28 on lab Fleet, Rancher 2.14.1, and in service since:
+# the release is ADOPTED in place - releaseName + takeOwnership - revision
+# bumps on the SAME release, no duplicate install, no pod churn).
 #
-#   VENDORED MODE (alternative): see fleet.vendored.yaml in this directory.
-#   Change `helm.chart` to ./longhorn-chart and drop repo/version. The chart
-#   is committed at longhorn-chart/ (END STATE - it must be re-pulled and
-#   replaced at EVERY Longhorn upgrade: the vendored chart IS the version
-#   pin; there is no remote-chart fetch at deploy time). Deterministic and
-#   air-gap friendly at the cost of a build-host step per upgrade.
+# Upgrade = edit `version:` -> commit -> push, always as its OWN commit
+# (cluster-template changes and Longhorn changes never share a commit), then
+# run the verification round (scripts/baseline.sh before, verify.sh after).
 #
-# GOTCHA (Fleet on Rancher 2.14.1 / 2.15.1): unknown keys under `helm:` are
-# SILENTLY DROPPED - helm.targetNamespace/helm.createNamespace do nothing and
-# the release lands in `default`. The namespace must be set with the TOP-LEVEL
-# key. In this Fleet era defaultNamespace is a plain STRING (newer Fleets
-# accept an object). The Longhorn chart must install into longhorn-system.
+# GOTCHA (Fleet on Rancher 2.14.x/2.15.x): unknown keys under `helm:` are
+# SILENTLY DROPPED - the namespace must be the TOP-LEVEL defaultNamespace
+# (plain STRING in this era). Longhorn must install into longhorn-system.
+# If you ever need a key not in the current schema, check the
+# bundledeployments.fleet.cattle.io CRD first - do not guess.
 defaultNamespace: longhorn-system
 helm:
   repo: https://charts.longhorn.io
@@ -27,5 +24,20 @@ helm:
   version: "1.11.2"
   releaseName: longhorn
   takeOwnership: true
-  valuesFiles:
-    - longhorn-values.yaml
+  values:
+    persistence:
+      defaultClass: true
+      # Production-shaped default: 3 replicas across >= 3 workers - this is
+      # what makes node drain / machine replacement survivable for all
+      # volumes. Adjust counts to your topology (>= 3 replicas recommended).
+      defaultClassReplicaCount: 3
+    defaultSettings:
+      # Match the storage class default so all volumes get the 3-replica
+      # shape.
+      defaultReplicaCount: "3"
+      # Do not stack two replicas of the same volume on one node
+      # (replicaSoftAntiAffinity): when distinct nodes are short, the volume
+      # stays degraded - loud - instead of silently co-locating. Zone-level
+      # spreading is a separate setting (replicaZoneSoftAntiAffinity) for
+      # zonal clusters.
+      replicaSoftAntiAffinity: "false"

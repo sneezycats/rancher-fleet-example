@@ -99,6 +99,9 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
 - `UPGRADE.md` — the change-day runbook: what each values edit does
   (scale vs roll), the verification chain, and the field-ownership pitfalls
   (start here before touching a running cluster).
+- `docs/longhorn-lifecycle.md` — the Longhorn-with-data contract: settings,
+  procedure, and verification rounds for cluster lifecycle with volumes
+  aboard.
 - `docs/gitrepo-fleet-clustertemplate.md` — layers, GitRepo schema, creation
   process, Fleet behaviors (including the footguns we recorded).
 - `docs/image-bake.md` — what the golden image changes vs upstream, and why

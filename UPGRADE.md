@@ -239,6 +239,9 @@ change, bump the chart version and re-copy (see
 
 - `docs/gitrepo-fleet-clustertemplate.md` — the layers, GitRepo schema, and
   recorded Fleet behaviors.
+- `docs/longhorn-lifecycle.md` — the Longhorn-with-data contract: settings,
+  procedure, and verification rounds for cluster lifecycle with volumes
+  aboard.
 - `docs/promotion-model.md` — how a change reaches production (branches,
   PRs, verification gates, rollback).
 - `fleet/bundles/longhorn/fleet.yaml` — Longhorn's single config file: the

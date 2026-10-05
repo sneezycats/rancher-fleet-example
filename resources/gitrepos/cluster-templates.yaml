@@ -1,6 +1,20 @@
 # Cluster template GitRepo (fleet.cattle.io) - EXAMPLE
 # Applies per environment; branch is the promotion axis
 # (development / staging / production share one repo, one branch each).
+#
+# WHERE THIS OBJECT LIVES - both GitRepo examples here are applied against
+# the SAME Rancher management kubeconfig; nothing is ever kubectl-applied
+# INTO a workload cluster. metadata.namespace selects the Fleet WORKSPACE,
+# and the workspace is the candidate pool:
+#   fleet-local   = the management cluster itself
+#   fleet-default = where every Rancher-provisioned cluster registers as a
+#                   Fleet cluster object
+# Rule of thumb: TEMPLATES go in fleet-local, COMPONENTS in fleet-default.
+# This template bundle needs no spec.targets: it self-installs on the local
+# cluster, rendering the provisioning Cluster + HarvesterConfigs there; CAPI
+# then builds the VMs. Component GitRepos (see longhorn.yaml) need targets
+# AND a label on the target - see the routing notes there. Mechanics
+# deep-dive: docs/gitrepo-fleet-clustertemplate.md and UPGRADE.md.
 apiVersion: fleet.cattle.io/v1alpha1
 kind: GitRepo
 metadata:

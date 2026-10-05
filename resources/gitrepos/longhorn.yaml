@@ -1,5 +1,24 @@
 # Longhorn bundle GitRepo (fleet.cattle.io) - EXAMPLE
 # Deploys Longhorn only onto clusters carrying the target label.
+#
+# WHERE THIS OBJECT LIVES - applied against the SAME Rancher management
+# kubeconfig as the cluster-template GitRepo; nothing is ever
+# kubectl-applied INTO a workload cluster. metadata.namespace selects the
+# Fleet WORKSPACE = the candidate pool: fleet-default holds every
+# Rancher-provisioned cluster (fleet-local would be the mgmt cluster
+# itself). Rule of thumb: TEMPLATES -> fleet-local, COMPONENTS ->
+# fleet-default.
+#
+# ROUTING needs BOTH halves:
+#   1. spec.targets below (clusterSelector), AND
+#   2. the label ON the target FLEET cluster object (not the provisioning
+#      Cluster CR):
+#        kubectl -n fleet-default label clusters.fleet.cattle.io <cluster> managed-by=fleet
+#      Miss #2 and the bundle sits at "0/0 targets" with no bundledeployment
+#      - nothing deploys and nothing errors.
+# Watch progress on the MGMT cluster: the bundledeployment appears in the
+# target's envelope namespace (cluster-fleet-default-<cluster>-<hash>); the
+# guest cluster only ever sees the RESULT (pods in longhorn-system).
 apiVersion: fleet.cattle.io/v1alpha1
 kind: GitRepo
 metadata:

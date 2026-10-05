@@ -233,6 +233,7 @@ change, bump the chart version and re-copy (see
 | Delayed worker loops `401 ... connection information` | node's install log | registration token rotated before the delayed node joined → delete the Machine; CAPI recreates it with fresh bootstrap data |
 | Existing CP "waiting for plan to be applied" during scale-up | provisioning cluster status | plan re-delivery → wait, self-heals |
 | `kubectl get cluster` shows an object with no `machinePools` | — | short-name collision with the CAPI Cluster → spell out `clusters.provisioning.cattle.io` |
+| Bundle 0/0 targets, no bundledeployment, GitRepo looks fine | target cluster labels | the `clusterSelector` matched nothing — label the FLEET cluster object, not the provisioning CR: `kubectl -n fleet-default label clusters.fleet.cattle.io <cluster> managed-by=fleet` |
 
 ## Where the deeper docs live
 

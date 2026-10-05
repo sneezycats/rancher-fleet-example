@@ -4,13 +4,15 @@ The operating contract for clusters built by the cluster template with
 Longhorn volumes aboard: what makes replacement safe, what to run before and
 after a change, and the settings that carry the guarantees.
 
-*Provenance: validated in-lab on Rancher 2.14.3 + Longhorn 1.11.2 — a full
-template-driven six-node roll (3 control-plane + 3 workers, serialized,
-6.1 → 6.2 image hop) completed with zero stranded nodes and zero manual
-intervention; the drain/replacement contract with volume data aboard has
-held across the lab's rolling-upgrade rounds (>= 3 replicas, >= 3 workers,
-data intact). Run the data-layer verification below on your first cluster —
-it is the standard practice, not an optional extra.*
+*Provenance (2026-10-05, Rancher 2.14.3 + Longhorn 1.11.2, in-lab): full
+serial rolls of all six machines with volume data aboard, verified by
+created-at identity, uninterrupted writer counters, and rebuilt 3/3 replica
+placement on the new workers. Two discriminating runs in one day: with the
+optional lhcc controller present (6.1 -> 6.2) and with zero controller
+present (6.2 -> 6.1). Data safety was vendor-native in BOTH runs - zero data
+loss, zero stuck-pod wedges, no manual intervention. One real gap: dead
+nodes' Longhorn node CRs and replicas do NOT self-clean (see the residue
+step below).*
 
 ## The contract (what makes replacement safe)
 
@@ -58,28 +60,48 @@ deleted. Expect node Ready ~10 min per hop.
 **3. What is normal during the roll** vs what is not:
 
 - Normal: volumes briefly `robustness=degraded` while a replica rebuilds —
-  data serves from the surviving replicas the whole time.
+  data serves from the surviving replicas the whole time. Both observed
+  rolls spent well under ten minutes per volume in degraded-and-serving.
 - Not normal: `state=detached`, `robustness=faulted`, or a volume stuck
   degraded after the roll passes it. Stop and investigate before proceeding.
 
-**4. Post-flight** — the verification round proves data continuity:
+**4. Post-flight verification round** — proves data continuity:
 
     CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/verify.sh
 
-Then check for residue — these two lists should match the current worker
-set exactly, with zero stopped replicas:
+Expect the verify's robustness check to pass once rebuilds complete (run it
+after the last volume returns to healthy, a few minutes after the machines
+settle). Identity checks (`created_at`, counters, CONTINUITY) are valid even
+mid-rebuild.
 
-    kubectl -n longhorn-system get nodes.longhorn.io
-    kubectl -n longhorn-system get replicas.longhorn.io --no-headers | grep -c stopped   # expect 0
+**5. Residue cleanup (required step)** — the roll leaves the deleted workers
+behind in Longhorn: their `nodes.longhorn.io` CRs and pinned replicas
+persist indefinitely (observed 25+ minutes, no self-clean; the Longhorn UI
+shows them as stranded nodes). Longhorn's admission webhook enforces an
+order for the fix — it refuses to delete a node CR while any replica is
+still pinned to it ("N replica ... running on it"), regardless of replica
+state:
+
+    CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-residue-cleanup.sh
+
+The script (1) refuses to run unless every volume is healthy and attached,
+(2) sets `allowScheduling=false` on each stranded node CR, (3) deletes the
+replicas pinned to it by `spec.nodeID` (note: these replicas carry
+`status.state` empty/None on current releases — filter by nodeID, not by
+state), (4) deletes the node CR, retrying past the webhook's informer-cache
+lag. End state to verify: exactly the current workers in
+`nodes.longhorn.io`, zero replicas remaining on deleted nodes.
 
 ## What you should NOT need
 
-No extra controller is required for data safety on this path — Longhorn's
-own settings (contract item 4) plus drain-first deletion carried full
-rolling upgrades in validation. The optional longhorn-capi-controller adds
-value only for unattended pipelines and crash-path automation; its README
-carries the "when you don't need this controller" decision table. Deploy it
-deliberately or not at all.
+Data safety on this path needs NO controller — proven with and without one
+in the same session (both hops: continuous counters, no wedge, rebuilt 3/3,
+zero manual data intervention). The one real residual gap is dead-node
+residue cleanup, which the vendor documents as a manual procedure (codified
+above). The optional longhorn-capi-controller automates exactly that
+cleanup; its README carries the when-you-do-not-need-it decision table.
+Deploy it for unattended pipelines where a post-roll script step is
+unwanted; on an attended path, run the script as part of the post-flight.
 
 ## Shrinks and rollbacks
 

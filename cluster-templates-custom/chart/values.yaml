@@ -1,0 +1,28 @@
+# Values for the RKE2 custom-cluster template (bare metal / bring-your-own).
+#
+# Custom clusters have NO machine pools: nodes register themselves by running
+# the per-role system-agent registration command AFTER this cluster object
+# exists. There is no cloud credential, no image, no network, no VM shape —
+# those are Harvester-only concepts (see ../chart/values.yaml for that flavor).
+
+name: ""
+description: ""
+
+# Kubernetes version — MUST be validated against the Rancher Support Matrix
+# for YOUR Rancher version before deploying:
+# https://www.suse.com/suse-rancher/support-matrix/
+kubernetesVersion: "v1.33.13+rke2r1"
+
+# RKE2 global config (clickops-parity shape: calico + traefik, same as the
+# Harvester template).
+machineGlobalConfig:
+  cni: calico
+  ingress-controller: traefik
+
+# Optional passthrough for rkeConfig.chartValues (empty = omit the field).
+# Custom clusters do NOT need global.cattle.clusterName or a cloud-provider
+# chart; Rancher injects the global.cattle.* values for its managed charts.
+chartValues: {}
+
+# Optional agent env vars (spec.agentEnvVars, e.g. proxy settings).
+agentEnvVars: []

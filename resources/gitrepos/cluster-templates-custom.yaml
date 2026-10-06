@@ -1,0 +1,15 @@
+# Cluster template GitRepo (fleet.cattle.io) - EXAMPLE (bare metal flavor)
+# Same pattern as cluster-templates.yaml (fleet-local, self-installing, no
+# targets) — only the path differs. TEMPLATES go in fleet-local, COMPONENTS
+# in fleet-default. Mechanics deep-dive: docs/gitrepo-fleet-clustertemplate.md.
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: "<REPLACE_ME>-cluster-templates"
+  namespace: fleet-local
+spec:
+  branch: "<REPLACE_ME_BRANCH>"
+  paths:
+  - cluster-templates-custom/chart
+  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  # targets omitted: a cluster-template bundle deploys itself on install

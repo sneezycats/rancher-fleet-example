@@ -1,0 +1,28 @@
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.name | default .Release.Name }}
+  namespace: fleet-default
+  {{- with .Values.description }}
+  annotations:
+    field.cattle.io/description: {{ . | quote }}
+  {{- end }}
+spec:
+  enableNetworkPolicy: false
+  kubernetesVersion: {{ .Values.kubernetesVersion | quote }}
+  {{- with .Values.agentEnvVars }}
+  agentEnvVars:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rkeConfig:
+    machineGlobalConfig:
+      {{- toYaml .Values.machineGlobalConfig | nindent 6 }}
+    {{- with .Values.chartValues }}
+    chartValues:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    # machinePools deliberately ABSENT: an rkeConfig without machinePools is
+    # what makes this a CUSTOM cluster (bring-your-own nodes). The CRD says:
+    # "RKEConfig ... is only populated for provisioned and custom clusters."
+    # Nodes register by running the per-role system-agent registration
+    # command — see ../README.md and docs/baremetal-custom-clusters.md.

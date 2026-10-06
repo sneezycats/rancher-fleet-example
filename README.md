@@ -57,13 +57,17 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    the bake guide for when a dedicated data disk is (and is not) needed.
 3. **Create the GitRepos** (`resources/gitrepos/*.yaml`, adjusted to your git
    host + branch strategy) and apply against your Rancher's kubeconfig.
-4. **Deploy**: either let Fleet install the template bundle from the GitRepo,
+4. **Private git? Create the Fleet client secret and reference it.**
+   `docs/git-credentials.md` has the GitLab Omnibus recipe (project deploy
+   token + basic-auth secret per workspace). The cluster pulls; the repo
+   never carries a credential.
+5. **Deploy**: either let Fleet install the template bundle from the GitRepo,
    or bypass for the first build:
    `helm install <cluster> ./cluster-templates/chart`
-5. **Label the cluster** once it is Ready:
+6. **Label the cluster** once it is Ready:
    `kubectl label clusters.fleet.cattle.io -n fleet-default <cluster> managed-by=fleet`
    → Longhorn deploys from its bundle.
-6. **Data layer + verification**: apply the data layer against the new
+7. **Data layer + verification**: apply the data layer against the new
    cluster's kubeconfig (`kubectl apply -f scripts/01-pvcs.yaml -f
    scripts/02-data-deployments.yaml`), then capture a baseline with
    `scripts/baseline.sh` before every round and run `scripts/verify.sh`

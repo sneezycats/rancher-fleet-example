@@ -29,12 +29,15 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 ## Repository layout
 
 ```
-├── cluster-templates/chart/        # the cluster template (Helm chart)
+├── cluster-templates/chart/        # the cluster template (Helm chart) — Harvester flavor
 │   ├── Chart.yaml + templates/     # renders the Cluster + HarvesterConfig CRs
 │   └── values.yaml                 # <REPLACE_ME> config: image, k8s, pools…
+├── cluster-templates-custom/       # BARE-METAL flavor: custom-cluster template
+│   ├── chart/                      # ONE Cluster CR, no machinePools (nodes register themselves)
+│   └── README.md                   # registration runbook (roles via command flags)
 ├── fleet/bundles/longhorn/         # Longhorn bundle - ONE fleet.yaml: version pin + values
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
-├── resources/gitrepos/             # the GitRepo CRs (cluster + longhorn)
+├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
 └── docs/                           # this approach, documented
 ```

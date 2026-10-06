@@ -78,10 +78,17 @@ for n in $GONE; do
   ok=""
   for attempt in 1 2 3 4; do
     if out=$($K delete nodes.longhorn.io "$n" 2>&1); then
+      echo "  OK: $n deleted"
       ok=1; break
     fi
-    echo "  attempt $attempt for $n: $out"
-    sleep 20
+    case "$out" in
+      *NotFound*)
+        echo "  OK: $n already gone (deleted elsewhere or self-cleaned) - counting as success"
+        ok=1; break ;;
+      *)
+        echo "  attempt $attempt for $n: $out"
+        sleep 20 ;;
+    esac
   done
   if [ -z "$ok" ]; then
     echo "  FAILED: $n could not be deleted after retries - investigate manually"

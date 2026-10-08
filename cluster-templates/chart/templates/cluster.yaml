@@ -18,6 +18,9 @@ spec:
           clusterName: {{ .Values.name | default .Release.Name | quote }}
       harvester-cloud-provider:
         cloudConfigPath: {{ .Values.harvesterCloudProvider.cloudConfigPath | quote }}
+      {{- with .Values.extraChartValues }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
     machineGlobalConfig:
       {{- toYaml .Values.machineGlobalConfig | nindent 6 }}
     machinePools:

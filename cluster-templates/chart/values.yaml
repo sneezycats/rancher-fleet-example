@@ -41,6 +41,24 @@ sshUser: "<REPLACE_ME_SSH_USER>"                # user the node driver provision
 userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
 
 # --- RKE2 global config (example: calico + traefik, clickops-parity shape) ---
+# `ingress-controller` is the same knob the Rancher cluster UI's Ingress
+# section manages. Accepted values (RKE2 `--ingress-controller`):
+#   traefik                  - Traefik only (the UI's "Traefik" card; default
+#                              for new clusters in RKE2 v1.36+)
+#   ingress-nginx            - Ingress-NGINX only (the UI's "Ingress NGINX"
+#                              card; legacy - upstream ingress-nginx is EOL
+#                              as of 2026-03)
+#   none                     - no bundled ingress controller
+#   [traefik, ingress-nginx] - DUAL mode: both controllers side by side (the
+#                              UI's "Dual Mode" card) - lets Ingress-NGINX
+#                              workloads move to Traefik one by one.
+#                              Requires a 2026-06+ RKE2 release (v1.32.11 /
+#                              v1.33.7 lines and up).
+# One controller = string; two = LIST. The FIRST entry becomes the cluster's
+# default IngressClass (during a migration keep the incumbent first; flip the
+# order when you cut over). Both controllers default to host ports 80/443, so
+# a dual deployment MUST move one of them - see `extraChartValues` below for
+# the exact Traefik values the UI writes for Dual Mode.
 machineGlobalConfig:
   cni: calico
   ingress-controller: traefik
@@ -48,6 +66,38 @@ machineGlobalConfig:
 # Harvester cloud-provider chart values (CCM installed on control-plane nodes)
 harvesterCloudProvider:
   cloudConfigPath: /var/lib/rancher/rke2/etc/config-files/cloud-provider-config
+
+# --- Extra chartValues (pass-through into spec.rkeConfig.chartValues) ---
+# Merged verbatim into the Cluster CR's `spec.rkeConfig.chartValues` - the
+# same slot Rancher fills for the RKE2 packaged charts (rke2-coredns,
+# rke2-ingress-nginx, rke2-traefik, ...) and for the Harvester CCM above.
+# What the UI writes, this pass-through can carry.
+#
+# DUAL-INGRESS RECIPE (only valid with the two-controller list above): the
+# exact values the Rancher UI writes for its "Dual Mode" option.
+# Ingress-NGINX keeps 80/443; Traefik moves to 8000/8443 and gains its
+# Ingress-NGINX compatibility provider, which serves any Ingress that opts
+# in via the migration class
+# (`ingressClassName: rke2-ingress-nginx-migration`) - that class is the
+# per-workload switch out of NGINX. Chart-key gate: the provider key was
+# renamed kubernetesIngressNginx -> kubernetesIngressNGINX in the 2026-06
+# chart line (present in the rke2-traefik chart shipped with v1.33.13); on
+# older RKE2 the lowercase key is the active one, and a wrong-case key
+# silently leaves the provider disabled.
+#
+# extraChartValues:
+#   rke2-traefik:
+#     ports:
+#       web:
+#         hostPort: 8000
+#       websecure:
+#         hostPort: 8443
+#     providers:
+#       kubernetesIngressNGINX:
+#         enabled: true
+#         ingressClass: rke2-ingress-nginx-migration
+#         controllerClass: rke2.cattle.io/ingress-nginx-migration
+extraChartValues: {}
 
 # --- Node pools (example: 3 CP @ 6 vCPU/6 GiB + 3 workers @ 6 vCPU/4 GiB) ---
 nodepools:

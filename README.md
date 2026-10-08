@@ -111,6 +111,10 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
   aboard.
 - `docs/gitrepo-fleet-clustertemplate.md` — layers, GitRepo schema, creation
   process, Fleet behaviors (including the footguns we recorded).
+- `docs/ingress-dual-mode.md` — ingress-controller selection in values.yaml:
+  single (traefik / ingress-nginx / none) and Dual Mode — both controllers
+  side by side (ports split + NGINX-compatibility provider + migration
+  class), matching what the Rancher UI writes.
 - `docs/image-bake.md` — what the golden image changes vs upstream, and why
   (immutable `/`, masked autopatch, cloud-final fix).
 - `docs/custom-sl-micro-longhorn-image.md` — full step-by-step golden-image bake

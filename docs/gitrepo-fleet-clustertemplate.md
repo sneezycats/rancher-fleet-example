@@ -31,6 +31,56 @@ spec:
         managed-by: fleet
 ```
 
+## Workspace: where the GitRepo lives decides what it can reach (A/B-validated 2026-10-09, 2.14.3)
+
+`metadata.namespace` selects the Fleet WORKSPACE, and the workspace is the
+candidate pool a GitRepo can ever target:
+
+- **fleet-local** = the management cluster itself (Fleet Cluster `local`). A
+  GitRepo here is applied by the LOCAL fleet-agent onto the management API —
+  the only path that can create `provisioning.cattle.io` Cluster CRs, because
+  those CRDs exist only on the management cluster.
+- **fleet-default** = downstream clusters that have REGISTERED (their Fleet
+  Cluster objects appear here when clusters register; the object is created as
+  soon as the provisioning Cluster CR lands, not only after nodes join).
+
+Same template chart + values deployed four ways (only the GitRepo workspace/
+targets differed) — single-node all-role instance, observed live:
+
+1. **fleet-local, no targets** → bundledeployment in `cluster-fleet-local-
+   local-*` → the local agent renders the Cluster CR onto the management API
+   → CAPI builds the VM → cluster bootstraps. **This is the bootstrap path.**
+2. **fleet-default, no targets** → implicit target is `clusterGroup: default`
+   — which does NOT exist in fleet-default on 2.14.3 (only fleet-local gets
+   one) → the bundle sits at `Ready=True, 0/0 clusters` and silently deploys
+   NOTHING. A green-looking GitRepo that builds no cluster.
+3. **fleet-default, `targets: [{clusterName: local}]`** → 0 targets (the
+   local cluster is not in this workspace) → nothing.
+4. **fleet-default, `targets: [{clusterName: <registered-cluster>}]`** → the
+   bundledeployment runs on that DOWNSTREAM cluster's agent and fails:
+   `unable to build kubernetes objects from release manifest: ... no matches
+   for kind "Cluster" in version "provisioning.cattle.io/v1"` — the CRD does
+   not exist downstream. `ErrApplied`.
+
+Rule of thumb, restated as mechanics: **TEMPLATES (bootstrap) → fleet-local;
+COMPONENTS (storage, apps) → fleet-default with label targets.** The cluster
+a template creates registers INTO fleet-default, which is where component
+GitRepos then reach it. Verify a template GitRepo by the rendered Cluster CR
+(`kubectl get clusters.provisioning.cattle.io -n fleet-default`), never by
+"the GitRepo shows Ready" — variant 2 above shows Ready with zero effect.
+
+Bundle names truncate (~49 chars + hash suffix): long GitRepo names produce
+bundle/BD names like `<gitrepo>-cluster-templat-46d85`.
+
+## The branch-quotes pitfall
+
+A GitRepo whose `spec.branch` contains quotes AS PART OF THE STRING (e.g.
+created through the Rancher UI form, which stores the raw string — a YAML
+manifest would have parsed them away) reports
+`Commit not found for branch: "master"` — the quotes visible in the error are
+literally in the branch name. Fix: remove them; UI form fields take raw
+values, quoting belongs only in YAML files where the parser strips it.
+
 ## Creation process
 
 1. Repo + pinned branch ready; charts + values committed.

@@ -33,6 +33,18 @@
 #   labels = 0/0; labeling the mgmt cluster would target it too). Node/VM
 #   labels play no part in Fleet targeting. Custom labels stick on the
 #   object, but a rebuilt cluster (new name) needs relabeling.
+#
+#   ONE REPO = ONE CLUSTER? Prefer NAME targets over labels:
+#     targets:
+#     - clusterName: <cluster-name>     # the fleet Cluster object's NAME
+#   (for Rancher-provisioned clusters that IS the cluster name, e.g.
+#   fleetlab2; imported clusters get their id as the name). No labeling step,
+#   human-readable in review, and it survives a rebuild that keeps the
+#   cluster name. Do NOT select on management.cattle.io/cluster-name: it is
+#   the opaque generated c-m-... id - you cannot know it until after first
+#   build, and a same-name rebuild generates a NEW id (the name survives, the
+#   id does not). Reserve label selectors for repos shared across many
+#   clusters (env tiers etc.).
 # Watch progress on the MGMT cluster: the bundledeployment appears in the
 # target's envelope namespace (cluster-fleet-default-<cluster>-<hash>); the
 # guest cluster only ever sees the RESULT (pods in longhorn-system).

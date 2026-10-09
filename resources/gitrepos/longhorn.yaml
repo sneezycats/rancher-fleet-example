@@ -16,6 +16,23 @@
 #        kubectl -n fleet-default label clusters.fleet.cattle.io <cluster> managed-by=fleet
 #      Miss #2 and the bundle sits at "0/0 targets" with no bundledeployment
 #      - nothing deploys and nothing errors.
+#
+#   WHICH OBJECT CARRIES THE LABELS - `clusters.fleet.cattle.io` in the
+#   workspace namespace. Do NOT mistake lookalikes:
+#     - `kubectl get clusters` resolves the SHORT NAME to cluster.x-k8s.io
+#       (CAPI Cluster) - a different object, not the targeting surface.
+#     - the provisioning Cluster CR (clusters.provisioning.cattle.io) only
+#       carries Helm/objectset bookkeeping labels.
+#   Labels fleet/populates on that object out of the box:
+#     provider.cattle.io (rke2 | harvester | ...),
+#     management.cattle.io/cluster-name (the c-m-... id),
+#     management.cattle.io/cluster-display-name,
+#     app.kubernetes.io/managed-by=Helm, objectset.rio.cattle.io/hash.
+#   `managed-by=fleet` is NOT auto-populated - it exists only where the
+#   operator put it, so this selector targets EXACTLY the labeled set (zero
+#   labels = 0/0; labeling the mgmt cluster would target it too). Node/VM
+#   labels play no part in Fleet targeting. Custom labels stick on the
+#   object, but a rebuilt cluster (new name) needs relabeling.
 # Watch progress on the MGMT cluster: the bundledeployment appears in the
 # target's envelope namespace (cluster-fleet-default-<cluster>-<hash>); the
 # guest cluster only ever sees the RESULT (pods in longhorn-system).

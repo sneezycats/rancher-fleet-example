@@ -27,11 +27,23 @@ spec:
       {{- range $i, $pool := .Values.nodepools }}
       - name: {{ $pool.name }}
         displayName: {{ $pool.name }}
-        controlPlaneRole: {{ $pool.controlplane | default false }}
-        etcdRole: {{ $pool.etcd | default false }}
-        workerRole: {{ $pool.worker | default false }}
+        {{- /* Emit booleans ONLY when true: Rancher's provisioning normalizer
+             strips false-valued machinePools booleans, so an always-rendered
+             `false` makes Fleet count the Cluster as Modified forever. Omitted
+             == false for these fields (validated live on 2.14.3). */}}
+        {{- if $pool.controlplane }}
+        controlPlaneRole: true
+        {{- end }}
+        {{- if $pool.etcd }}
+        etcdRole: true
+        {{- end }}
+        {{- if $pool.worker }}
+        workerRole: true
+        {{- end }}
         quantity: {{ $pool.quantity | default 1 }}
-        drainBeforeDelete: {{ $pool.drainBeforeDelete | default false }}
+        {{- if $pool.drainBeforeDelete }}
+        drainBeforeDelete: true
+        {{- end }}
         {{- with $pool.drainBeforeDeleteTimeout }}
         drainBeforeDeleteTimeout: {{ . | quote }}
         {{- end }}

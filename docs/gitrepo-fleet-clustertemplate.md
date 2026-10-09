@@ -72,6 +72,19 @@ GitRepos then reach it. Verify a template GitRepo by the rendered Cluster CR
 Bundle names truncate (~49 chars + hash suffix): long GitRepo names produce
 bundle/BD names like `<gitrepo>-cluster-templat-46d85`.
 
+**ClusterGroups do not change this.** A ClusterGroup only selects WITHIN its
+own workspace — it cannot make a fleet-default GitRepo reach the management
+API. Validated on 2.14.3: a ClusterGroup with NO selector matched NOTHING
+(`clusterCount: 0` — do not assume k8s empty-selector match-all semantics),
+and a label-selector group that resolved correctly still delivered the
+template bundle to the DOWNSTREAM agent, which failed with the same
+`no matches for kind "Cluster" in version "provisioning.cattle.io/v1"`.
+Selector labels match labels on the workspace's `fleet.cattle.io` Cluster
+objects. Also note: creating a populated `default` ClusterGroup in
+fleet-default silently repoints every implicit-target (no `spec.targets`)
+GitRepo in that workspace at all matched clusters — keep explicit targets on
+component GitRepos.
+
 ## The branch-quotes pitfall
 
 A GitRepo whose `spec.branch` contains quotes AS PART OF THE STRING (e.g.

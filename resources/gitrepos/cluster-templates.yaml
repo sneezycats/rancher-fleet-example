@@ -25,6 +25,18 @@ spec:
   paths:
   - cluster-templates/chart
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  # SELF-HEAL (validated live on 2.14.3): with correctDrift enabled the
+  # template repo re-creates a deleted Cluster CR in seconds - the repo truly
+  # owns the cluster. WITHOUT it, a deleted cluster stays deleted (the GitRepo
+  # only reports Modified/missing) until a NEW commit forces a re-apply.
+  correctDrift:
+    enabled: true
+  # IDENTITY note for component GitRepos (e.g. the longhorn.yaml sibling):
+  # pin them with targets: [{clusterName: <cluster-name>}] - the Fleet
+  # Cluster object is NAMED after the provisioning cluster and returns
+  # identically after a same-name rebuild. NEVER pin the management id
+  # (management.cattle.io/cluster-name, c-m-...): it REGENERATES on every
+  # rebuild, leaving the component repo silently at 0/0 on a dead id.
   # PRIVATE REPO (work): uncomment and create the client secret first —
   # see docs/git-credentials.md. The lab uses anon http clones of public
   # repos, so this is commented out here.

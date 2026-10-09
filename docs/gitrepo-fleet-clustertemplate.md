@@ -85,6 +85,28 @@ fleet-default silently repoints every implicit-target (no `spec.targets`)
 GitRepo in that workspace at all matched clusters — keep explicit targets on
 component GitRepos.
 
+## Cluster identity across rebuilds (validated live 2026-10-09)
+
+The management cluster id (`management.cattle.io/cluster-name`, `c-m-...`) is
+minted fresh EVERY time the provisioning Cluster CR is created: a same-name
+rebuild (delete the CR; the template GitRepo re-renders it) regenerates the
+id. Never pin component GitRepo targets to it — after any rebuild the target
+matches a dead id and the bundle sits silently at 0/0 (no error, no deploy).
+
+The stable identity is the **Fleet Cluster object's NAME**, which for
+Rancher-provisioned clusters equals the provisioning cluster name (imported
+clusters are named by their cluster id instead) and returns identically after
+a same-name rebuild. Pin component repos with
+`targets: [{clusterName: <cluster-name>}]`: it resolves the moment the
+cluster registers (0/0 silent before that) and re-attaches across rebuilds
+with ZERO repo changes — verified end-to-end with a canary bundle through a
+full delete/rebuild cycle (~6 min rebuild, instant re-attach).
+
+Related: a template GitRepo with `spec.correctDrift.enabled: true` re-creates
+a deleted Cluster CR in seconds (no new commit needed). With correctDrift
+disabled (the default), a deleted cluster stays deleted — the GitRepo only
+reports `Modified ... missing` — until a NEW commit forces a re-apply.
+
 ## The branch-quotes pitfall
 
 A GitRepo whose `spec.branch` contains quotes AS PART OF THE STRING (e.g.

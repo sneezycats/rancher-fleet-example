@@ -36,7 +36,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 │   ├── chart/                      # ONE Cluster CR, no machinePools (nodes register themselves)
 │   └── README.md                   # registration runbook (roles via command flags)
 ├── fleet/bundles/longhorn/         # Longhorn bundle - ONE fleet.yaml: version pin + values
-├── harvester-lb/                   # Harvester L4 LBs (IPPool + apiserver/ingress split) — raw YAML
+├── harvester-lb/                   # Harvester L4 LBs (IPPool + ingress LB; apiserver LB optional) — raw YAML
 ├── gateway-traefik/                # Gateway API on bundled Traefik (Gateway + demo HTTPRoute) — raw YAML
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn + LB + gateway)

@@ -31,6 +31,31 @@ selecting the HARVESTER cluster. The harvester-load-balancer controller
 then creates and OWNS the Service + dummy EndpointSlice + kube-vip claim —
 never author those yourself.
 
+## Do you need an apiserver LB at all?
+
+Under the default Rancher posture, usually not:
+
+- `kubectl` to a downstream cluster rides the Rancher proxy
+  (`https://<rancher>/k8s/clusters/<id>`) — no direct route to the guest
+  API server is required.
+- Node agents **dial out** to the Rancher URL (verified: the RKE2
+  node-plan `server:` entry is the Rancher URL, not a cluster VIP), and
+  inter-node RKE2 traffic (9345 join, etcd) uses node IPs directly.
+
+So the ingress LB alone covers the work chain. Add an apiserver LB only
+when you want one of:
+
+1. **Break-glass access that survives a Rancher outage** — the proxy
+   path dies with Rancher; a direct VIP does not.
+2. **External automation with its own kubeconfig** pointed at a stable
+   VIP that survives control-plane replacement (the alternative —
+   pinning node IPs — breaks on every machine replacement).
+3. **An upstream L7 balancer fronting 6443** as well as 80/443.
+
+If you enable one, add the VIP to the API server's serving-cert SANs
+(RKE2 `api-endpoints` in the machine GlobalConfig) or direct clients hit
+TLS name mismatches. The template ships it commented out for this reason.
+
 ## Pitfalls
 
 All observed in practice; the dated run records are in
@@ -59,8 +84,9 @@ All observed in practice; the dated run records are in
 10. **healthCheck.port gates the WHOLE backend set, not per-listener.**
     An LB with listeners on 6443 AND 80 cannot health both: whichever
     port you probe excludes nodes not serving it (observed: hc=6443
-    silently killed the VIP's :80 path). Split LBs per port group:
-    apiserver LB + ingress LB, each with a matching healthCheck port.
+    silently killed the VIP's :80 path). If you run both an apiserver LB
+    and an ingress LB, keep them split, each with a matching
+    healthCheck port.
 11. **Traefik on RKE2 = hostNetwork on workers** (hostPort 80/443 on the
     worker node IPs), so the ingress LB can select the worker pool via
     nodepool.harvesterhci.io/name — but the pool name carries a generated

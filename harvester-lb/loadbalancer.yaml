@@ -1,39 +1,17 @@
-# One L4 LB per PORT GROUP per workload cluster. Split apiserver from
-# ingress: healthCheck.port gates the WHOLE backend set of an LB, not
-# per-listener: with healthCheck.port=6443 the workers — which don't
-# serve 6443 — are excluded and the VIP's :80 listener goes dead. So one
-# LB whose listeners span CP-only ports AND worker-only ports cannot
-# health-check both. Each LB consumes one pool IP.
+# One L4 LB per PORT GROUP per workload cluster. Each LB consumes one
+# pool IP. healthCheck.port gates the WHOLE backend set of an LB, not
+# per-listener — so if you DO run an apiserver LB alongside the ingress
+# LB, they must stay split (one LB with 6443 AND 80 listeners cannot
+# health-check both: whichever port you probe excludes the nodes not
+# serving it). See README.md pitfall 10.
 #
 # Reference chain: upstream L7 balancer (e.g. F5) -> pool member = the
 # ingress LB VIP below.
 # backendServerSelector matches the labels the Harvester node driver
 # STAMPS AUTOMATICALLY (guestcluster.harvesterhci.io/name = Rancher
-# cluster name) — no manual labeling step.
-apiVersion: loadbalancer.harvesterhci.io/v1beta1
-kind: LoadBalancer
-metadata:
-  name: <REPLACE_ME_CLUSTER>-apiserver
-  namespace: <REPLACE_ME_VM_NAMESPACE>   # MUST equal the VM namespace
-spec:
-  ipam: pool
-  ipPool: <REPLACE_ME_POOL>
-  workloadType: vm                       # pitfall 8
-  listeners:
-    - name: apiserver
-      port: 6443
-      protocol: TCP
-      backendPort: 6443
-  backendServerSelector:
-    guestcluster.harvesterhci.io/name:
-      - <REPLACE_ME_CLUSTER>
-  healthCheck:
-    port: 6443                           # must equal a listener backendPort
-    successThreshold: 1
-    failureThreshold: 3
-    periodSeconds: 5                     # lowercase p (pitfall 7)
-    timeoutSeconds: 3
----
+# cluster name) — no manual labeling step. One selector is enough; the
+# IPPool has its own separate scope selector (ippool.yaml) — different
+# object, different job.
 # Ingress/gateway LB — the single pool member an upstream L7 balancer
 # (e.g. F5) points at. Traefik on RKE2 runs on WORKERS with hostNetwork
 # (hostPort 80/443 on every worker node IP), so backendPort = 80/443
@@ -43,11 +21,11 @@ apiVersion: loadbalancer.harvesterhci.io/v1beta1
 kind: LoadBalancer
 metadata:
   name: <REPLACE_ME_CLUSTER>-ingress
-  namespace: <REPLACE_ME_VM_NAMESPACE>
+  namespace: <REPLACE_ME_VM_NAMESPACE>   # MUST equal the VM namespace
 spec:
   ipam: pool
   ipPool: <REPLACE_ME_POOL>
-  workloadType: vm
+  workloadType: vm                       # pitfall 8
   listeners:
     - name: http
       port: 80
@@ -64,10 +42,46 @@ spec:
     guestcluster.harvesterhci.io/name:
       - <REPLACE_ME_CLUSTER>
     nodepool.harvesterhci.io/name:
-      - <REPLACE_ME_WORKER_POOL>         # e.g. workers-jvc57 — pool suffix is generated; see note
+      - <REPLACE_ME_WORKER_POOL>         # e.g. workers-<5chars> — pool suffix is generated; see README pitfall 11
   healthCheck:
     port: 80                             # gates the whole set — keep it an ingress port
     successThreshold: 1
     failureThreshold: 3
-    periodSeconds: 5
+    periodSeconds: 5                     # lowercase p (pitfall 7)
     timeoutSeconds: 3
+---
+# OPTIONAL apiserver LB — commented out by default. Under the default
+# Rancher posture you do NOT need it: Rancher proxies kubectl to every
+# downstream cluster (https://<rancher>/k8s/clusters/<id>), node agents
+# dial out to the Rancher URL, and nothing external dials the guest
+# API server directly. Enable it when you want one of:
+#   - break-glass kubectl that survives a Rancher outage (the proxy path
+#     dies with Rancher; a direct VIP does not),
+#   - external automation holding its own kubeconfig against a stable
+#     VIP that survives control-plane replacement,
+#   - an upstream L7 balancer fronting 6443 as well as 80/443.
+# If enabled, add the VIP to the API server's serving cert SANs (RKE2
+# `api-endpoints`) or direct clients hit TLS name mismatches.
+# apiVersion: loadbalancer.harvesterhci.io/v1beta1
+# kind: LoadBalancer
+# metadata:
+#   name: <REPLACE_ME_CLUSTER>-apiserver
+#   namespace: <REPLACE_ME_VM_NAMESPACE>
+# spec:
+#   ipam: pool
+#   ipPool: <REPLACE_ME_POOL>
+#   workloadType: vm
+#   listeners:
+#     - name: apiserver
+#       port: 6443
+#       protocol: TCP
+#       backendPort: 6443
+#   backendServerSelector:
+#     guestcluster.harvesterhci.io/name:
+#       - <REPLACE_ME_CLUSTER>
+#   healthCheck:
+#     port: 6443                         # must equal a listener backendPort
+#     successThreshold: 1
+#     failureThreshold: 3
+#     periodSeconds: 5
+#     timeoutSeconds: 3

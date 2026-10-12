@@ -4,8 +4,8 @@
 # release name, and the values. There is no separate values file and no
 # second mode - this `version:` line is the ONLY version-carrying field in
 # the bundle, so it is the only thing you edit to upgrade Longhorn
-# (validated 2026-09-28 on lab Fleet, Rancher 2.14.1, and in service since:
-# the release is ADOPTED in place - releaseName + takeOwnership - revision
+# (validated on Rancher 2.14.x and in service since: the release is
+# ADOPTED in place - releaseName + takeOwnership - revision
 # bumps on the SAME release, no duplicate install, no pod churn).
 #
 # Upgrade = edit `version:` -> commit -> push, always as its OWN commit

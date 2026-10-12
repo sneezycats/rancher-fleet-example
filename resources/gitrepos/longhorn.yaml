@@ -38,7 +38,7 @@
 #     targets:
 #     - clusterName: <cluster-name>     # the fleet Cluster object's NAME
 #   (for Rancher-provisioned clusters that IS the cluster name, e.g.
-#   fleetlab2; imported clusters get their id as the name). No labeling step,
+#   <cluster-name>; imported clusters get their id as the name). No labeling step,
 #   human-readable in review, and it survives a rebuild that keeps the
 #   cluster name. Do NOT select on management.cattle.io/cluster-name: it is
 #   the opaque generated c-m-... id - you cannot know it until after first
@@ -62,7 +62,7 @@ spec:
   # bundle", before uncommenting.
   # - fleet/bundles/lhcc-rbac
   # PRIVATE REPO (work): uncomment and create the client secret first -
-  # see docs/git-credentials.md. The lab uses anon http clones of public
+  # see docs/git-credentials.md. The examples assume anon http clones of public
   # repos, so this is commented out here.
   # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret, SAME namespace as this GitRepo
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"

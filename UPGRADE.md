@@ -6,10 +6,9 @@ modes that are invisible in the UI. Written for someone returning to this
 repo after months of other work — every command is copy-pasteable with
 placeholders.
 
-*Provenance: mechanics validated in-lab on Rancher 2.14.3 + Harvester 1.7.x,
-2026-10-04 (control-plane 1→3 and workers 1→2 in one change: 3 new VMs,
-5/5 nodes Ready ~9 min after push). Field names move between Rancher
-versions — re-validate against yours.*
+*Provenance: mechanics validated on Rancher 2.14-era; dated run records in
+`docs/lab-validation-log.md`. Field names move between Rancher versions —
+re-validate against yours.*
 
 ## The 30-second version
 

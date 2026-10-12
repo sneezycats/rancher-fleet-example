@@ -5,9 +5,10 @@ through this repo — including the Rancher UI's "Dual Mode", where Traefik
 and Ingress-NGINX run beside each other as a migration bridge instead of a
 flag-day swap.
 
-*Provenance: validated in-lab on Rancher 2.14.3 + Harvester 1.7.x + RKE2
-v1.33.13 (fresh dual-controller cluster build, 2026-10-08) — both
-controllers confirmed serving; the checks below are from that round.*
+*Provenance: validated on a fresh dual-controller cluster build (Rancher
+2.14-era + RKE2 1.33 line) — both controllers confirmed serving; the
+checks below are from that round. Dated run record:
+`docs/lab-validation-log.md`.*
 
 ## The knob
 

@@ -12,12 +12,13 @@ per-node manual steps.
 **Companion doc:** `image-bake.md` (same directory) — the change-set vs upstream; this
 document is the full step-by-step procedure.
 
-> **Provenance:** this guide documents a reference lab. Paths like
-> `build:~/…` and references to companion documents outside this repo
-> (`longhorn-maintenance-behavior.md`, `cdi-vmimage-import-howto.md`,
-> `harvester-longhorn-single-mig-sc.yaml`, `docs/bootcmd-vs-runcmd.md`)
-> point at that lab's build host and doc set — substitute your own
-> equivalents.
+> **Provenance:** this guide is written generically. The reference lab's
+> artifact locations, golden-image version history, and scripted-import
+> details are consolidated in `docs/lab-validation-log.md`. Companion
+> documents outside this repo (`longhorn-maintenance-behavior.md`,
+> `cdi-vmimage-import-howto.md`, `harvester-longhorn-single-mig-sc.yaml`,
+> `docs/bootcmd-vs-runcmd.md`) point at that lab's doc set — substitute
+> your own equivalents.
 
 ---
 
@@ -60,13 +61,12 @@ Notes:
 ### 2.2 Source image
 
 A pristine SL Micro qcow2 for your target version (6.2: `SL-Micro.x86_64-6.2-Default-qcow-GM.qcow2`;
-6.0 ships as `…-GM2`, 6.1 as `…-GM`; ~1.3–1.4 GB; licensed copies live in `build:~/slmicro-build/` —
-see §8). Keep it read-only and work on a copy — the build mutates the file in place.
+6.0 ships as `…-GM2`, 6.1 as `…-GM`; ~1.3–1.4 GB; see §8). Keep it read-only and work on a copy — the build mutates the file in place.
 
 ### 2.3 The three files to bake
 
 **`slmicro-longhorn-setup.sh`** — the firstboot script (baked into the image as
-`/usr/local/sbin/longhorn-setup.sh`; verbatim from `build:~/slmicro-build/`):
+`/usr/local/sbin/longhorn-setup.sh`):
 
 ```bash
 #!/usr/bin/env bash
@@ -229,8 +229,8 @@ WantedBy=multi-user.target
 **Why `basic.target`, not `multi-user.target`:** the multi-user chain on Harvester SL Micro images
 has an ordering cycle (`cloud-final → health-checker → multi-user.target`) and systemd breaks it by
 deleting late jobs. Enabling the unit on `basic.target` (which is reached *before* that chain and is
-outside the cycle) sidesteps the problem entirely. Verified live 2026-09-11 on v3e nodes: unit starts
-at boot, disk mounted.
+outside the cycle) sidesteps the problem entirely (verified: unit starts at
+boot, disk mounted).
 
 **Design decisions worth understanding before you change anything:**
 
@@ -365,14 +365,27 @@ suppression.
 
 ## 3.1 Bake version history (what changed per golden image)
 
-| Version | Era | Changes over predecessor |
-|---|---|---|
-| v3d | 2026-09-10 | First working golden: disk-mount + autopatch-suppression units, `/dev/null` masks. Discovered the `/usr/local/lib/systemd` trap (units there are "enabled" yet never queued — resolve before the boot transaction mounts `/usr/local`). |
-| v3e | 2026-09-11 | Canonical layout: everything under `/etc/systemd/system`; disk unit → `basic.target.wants`, autopatch unit → `multi-user.target.wants`; verified live on a v3e node. |
-| v3f | 2026-09-12 | Removed baked-in ssh user/keys — the RKE2 node-driver delivers keys via `user_data`; baked keys are stale access that outlives the operator. `cwsneezy` key restored separately in the lab. |
-| v3g | 2026-09-21 | Added the **`health-checker.service` mask** — fixes the SL Micro 6.2 upstream cloud-final race (health-checker↔cloud-final cycle randomly kills cloud-final → node-driver `install.sh` never runs → ~half the nodes never join; `systemctl start cloud-final` unblocks). `/home` left `ro=false` (transactional runtime remounts it rw anyway; the flip is needed at bake time so uploads land). The recipe is stable from here — later generations re-tag it only (v4g). |
-| 6.0 / 6.1 ports | 2026-09-25 | Identical recipe to v3g, **plus** `btrfs property set / ro false` during bake: 6.0/6.1 have **no writable `/etc` subvol** — `/etc` is an fstab *overlay* whose **lower layer lives on the btrfs root subvol `@`** (`ro=true` by default). The flip is required before the `virt-customize --upload` writes; at runtime `/etc` stays writable through the overlay (upper in `/var/lib/overlay`, on the rw `/var` subvol), so RKE2 config writes work normally. `longhorn-setup.sh` + the four masks are identical. |
-| v4g | 2026-09-26/27 | **Re-tag of v3g** — byte-identical output; the tag iterates the golden-image *generation*, not content (it drove the fleet image-hop cycle, 6.0→6.1→6.2). Verify a re-tag by exact byte size: 6.0 = 1324875776, 6.1 = 1345191936, 6.2 = 1451687936. Current built images: `slmicro-{6.0,6.1,6.2}-longhorn-v4g.qcow2`. |
+The dated per-version history (v3d → v4g, with the exact byte sizes that
+prove a re-tag) lives in `docs/lab-validation-log.md`. The lessons that
+shaped the recipe:
+
+- **`/usr/local/lib/systemd` trap:** units there are "enabled" yet never
+  queued — resolve before the boot transaction mounts `/usr/local`.
+  Canonical layout keeps everything under `/etc/systemd/system`.
+- **No baked credentials:** the RKE2 node-driver delivers users/keys via
+  `user_data`; baked-in keys are stale access that outlives the operator.
+- **`health-checker.service` mask** fixes the SL Micro 6.2 upstream
+  cloud-final race (health-checker↔cloud-final cycle randomly kills
+  cloud-final → node-driver `install.sh` never runs → ~half the nodes
+  never join; `systemctl start cloud-final` unblocks).
+- **6.0/6.1 btrfs flip:** those releases have no writable `/etc` subvol —
+  `/etc` is an fstab overlay whose lower layer lives on the btrfs root
+  subvol `@` (`ro=true` by default). `btrfs property set / ro false` is
+  required before the `virt-customize --upload` writes; at runtime `/etc`
+  stays writable through the overlay (upper in `/var/lib/overlay`, on the
+  rw `/var` subvol), so RKE2 config writes work normally.
+- **Generation tags iterate, they don't diff:** a re-tag can be
+  byte-identical to its predecessor; verify by exact byte size, not name.
 
 **Why masks instead of a disable unit for the patch suppression:** `/dev/null` masks are honored at unit-load time, immune to any ordering-cycle breakage — this is the suppression that actually works on live nodes (see §3).
 
@@ -431,14 +444,14 @@ raw *block* volume must use a StorageClass with **`migratable: "true"`**. With `
 Longhorn serves RWX volumes over NFS via a share-manager and no `/dev` block device appears — the
 firstboot script skips (`no /dev/vdc`) and you get
 `special device ... does not exist` errors. See `harvester-longhorn-single-mig-sc.yaml` (in the
-Harvester doc set) for a migratable single-node example; the lab storage class is
-`harvester-longhorn-single-mig`.
+reference lab's doc set) for a migratable single-node example.
 
-> **Scripted alternative (what the lab uses):** stage the finished qcow2 into the CDI root on the
-> build host (served by `headserver.py` on :8081) and import it as a `VirtualMachineImage` with a
-> flat `sourceType: download` — name chosen by you, `displayName` = the chart's `imageName`.
-> Full walkthrough: `cdi-vmimage-import-howto.md`. Either path lands the same VMI; the CDI path is
-> scriptable and survives rebuilds.
+> **Scripted alternative:** stage the finished qcow2 into the CDI root on a
+> build host (served by a small static HTTP server) and import it as a
+> `VirtualMachineImage` with a flat `sourceType: download` — name chosen by you,
+> `displayName` = the chart's `imageName`. Full walkthrough:
+> `cdi-vmimage-import-howto.md` (reference lab's doc set). Either path lands the
+> same VMI; the CDI path is scriptable and survives rebuilds.
 
 ---
 
@@ -447,7 +460,7 @@ Harvester doc set) for a migratable single-node example; the lab storage class i
 ```hcl
 harvester_image_name      = "image-XXXXX"                    # the golden image
 longhorn_disk_gb          = 100                              # per-worker data disk size
-longhorn_storage_class    = "harvester-longhorn-single-mig"  # migratable=true SC
+longhorn_storage_class    = "<SC_NAME>"                      # migratable=true SC
 ```
 
 ---
@@ -465,15 +478,15 @@ validated with [longhorn-capi-controller](https://github.com/sneezycats/longhorn
 
 ## 8. Artifacts
 
-Lab artifacts below live on the build host; adjust paths for your environment.
+This guide is self-contained: the scripts it prints ARE the artifacts. The
+reference lab's artifact locations (build-host paths, image names, the
+CDI import walkthrough) are listed in `docs/lab-validation-log.md`.
 
-| Artifact | Location |
+| Artifact | What to keep |
 |---|---|
-| Firstboot script (source) | `build: ~/slmicro-build/slmicro-longhorn-setup.sh` (uploaded as `/usr/local/sbin/longhorn-setup.sh`) |
-| Systemd units (sources) | `build: ~/slmicro-build/slmicro-longhorn-setup.service` + `slmicro-disable-autopatch.service` |
-| Bake driver scripts (current) | `build: ~/slmicro-build/bake-v4g.sh` (6.2), `bake-v4g-660.sh` (6.0), `bake-v4g-661.sh` (6.1); v3g and earlier kept alongside |
-| Built golden images (current) | `build: ~/slmicro-build/slmicro-{6.0,6.1,6.2}-longhorn-v4g.qcow2` (v3g retained) |
-| Staging / archive helper | `build: ~/slmicro-build/image-store.sh` — LOCAL/CDI/ARCHIVE tiers + hash-checked manifest |
-| Import walkthrough | `cdi-vmimage-import-howto.md` (build: `~/harvester/`) |
-| VMI (Harvester) | displayName `sl-micro-longhorn-{6.0,6.1,6.2}-<generation>` (e.g. `…-v4g`) — must match the chart `imageName` (§5; give the VMI the same name to keep name and displayName aligned) |
-| Source SL Micro images | `build: ~/slmicro-build/SL-Micro.x86_64-6.{0,1,2}-Default-qcow-GM*.qcow2` (licensed copies) |
+| Firstboot script (source) | `slmicro-longhorn-setup.sh` (baked as `/usr/local/sbin/longhorn-setup.sh`) |
+| Systemd units (sources) | `slmicro-longhorn-setup.service` + `slmicro-disable-autopatch.service` |
+| Bake driver script | one per SL Micro version (see §2/§3 for the exact virt-customize invocations) |
+| Built golden images | keep a hash-checked manifest (size + sha256) per image |
+| VMI (Harvester) | displayName `<image>-<generation>` — must match the chart `imageName` (§5; give the VMI the same name to keep name and displayName aligned) |
+| Source SL Micro images | pristine upstream qcow2 per target version (licensed copies) |

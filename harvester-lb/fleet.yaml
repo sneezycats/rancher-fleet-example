@@ -1,5 +1,5 @@
 # Raw-YAML bundle (default operation). Do NOT add a helm: block here —
 # any helm: key switches the path to Helm operation and a chartless
-# directory then renders ZERO resources (pitfall 3, caught live).
+# directory then renders ZERO resources (README.md pitfall 3).
 # defaultNamespace is NOT set — manifests pin their own namespaces
 # (IPPool is cluster-scoped; the LB pins the VM namespace).

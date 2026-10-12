@@ -2,8 +2,8 @@
 #
 # Listener port = Traefik ENTRYPOINT CONTAINER port (web=:8000,
 # websecure=:8443), NOT the node hostPort (80/443). The Harvester L4
-# ingress LB (harvester-lb/) fronts the hostPorts; upstream (work: F5)
-# targets that VIP.
+# ingress LB (harvester-lb/) fronts the hostPorts; upstream balancers
+# (e.g. F5) target that VIP.
 #
 # The chart's own auto-Gateway is suppressed via
 # extraChartValues.gateway.enabled=false so this bundle owns the single

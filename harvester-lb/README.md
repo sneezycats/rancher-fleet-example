@@ -6,15 +6,15 @@ This path applies them through Fleet to the **Harvester (management)
 cluster itself** — not to the guest/workload cluster — so the LB is
 git-tracked like everything else and the manual path disappears.
 
-## Production shape (work)
+## Reference topology
 
-    client -> F5 L7 VIP (security-mandated) -> pool member = ONE Harvester
-    L4 LB VIP -> workload cluster nodes -> ingress/gateway routes
+    client -> upstream L7 balancer (optional; e.g. F5) -> pool member =
+    ONE Harvester L4 LB VIP -> workload cluster nodes -> ingress/gateway routes
 
 The Harvester L4 LB is port-agnostic below the VIP: give it one listener
-per port the F5 (or any upstream) forwards. The cluster's ingress
-(traefik/gateway) owns L7 routing. Mocking in the lab = skip the F5 and
-curl the VIP directly; nothing about the Harvester-side plumbing changes.
+per port the upstream balancer forwards. The cluster's ingress
+(traefik/gateway) owns L7 routing. Without an upstream balancer, clients
+reach the VIP directly; nothing about the Harvester-side plumbing changes.
 
 ## Files
 
@@ -23,15 +23,18 @@ curl the VIP directly; nothing about the Harvester-side plumbing changes.
   labels the Harvester node driver stamps automatically
 - `fleet.yaml`       — raw-YAML bundle marker (see warning inside)
 
-## Delivery (verified live 2026-10-12 on hobbyfarm + fleetlab5)
+## Delivery
 
-GitRepo lives in `gitrepos/` (applied manually to the Rancher mgmt
-cluster) with `paths: [harvester-lb]` and a `targets` entry selecting the
-HARVESTER cluster. The harvester-load-balancer controller then creates
-and OWNS the Service + dummy EndpointSlice + kube-vip claim — never
-author those yourself.
+GitRepo lives in `resources/gitrepos/` (applied manually to the Rancher
+mgmt cluster) with `paths: [harvester-lb]` and a `targets` entry
+selecting the HARVESTER cluster. The harvester-load-balancer controller
+then creates and OWNS the Service + dummy EndpointSlice + kube-vip claim —
+never author those yourself.
 
-## Pitfalls (all caught live, 2026-10-12)
+## Pitfalls
+
+All observed in practice; the dated run records are in
+`docs/lab-validation-log.md`.
 
 1. **GitRepo namespace = target cluster namespace.** Imported Harvester
    clusters live in `fleet-default`; a `fleet-local` GitRepo matches zero
@@ -53,10 +56,9 @@ author those yourself.
    for LBs the Harvester CCM auto-creates from guest LoadBalancer
    Services — the mgmt controller deliberately skips those.
 9. v1alpha1 is deprecated and lacks `backendServerSelector` — v1beta1 only.
-
 10. **healthCheck.port gates the WHOLE backend set, not per-listener.**
     An LB with listeners on 6443 AND 80 cannot health both: whichever
-    port you probe excludes nodes not serving it (verified live — hc=6443
+    port you probe excludes nodes not serving it (observed: hc=6443
     silently killed the VIP's :80 path). Split LBs per port group:
     apiserver LB + ingress LB, each with a matching healthCheck port.
 11. **Traefik on RKE2 = hostNetwork on workers** (hostPort 80/443 on the
@@ -65,10 +67,8 @@ author those yourself.
     suffix (workers-<5chars>); read it off a live VM (`kubectl get vm
     --show-labels`) or select the whole cluster and let the health check
     trim.
-
 12. **Listener changes do not prune the owned Service's ports.** The
     controller ADDS ports on listener edits but never removes them —
     stale listeners keep routing (and can shadow the health-check
     change you just made). On any listener-shape change, delete the LB
-    and let Fleet re-create it (same pool IP is re-allocated — verified:
-    .200 came back identical after recreate).
+    and let Fleet re-create it (the same pool IP is re-allocated).

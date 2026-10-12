@@ -1,7 +1,8 @@
 # gateway-traefik — Gateway API on the RKE2-bundled Traefik
 
-Live-verified on fleetlab5 (RKE2 v1.33.13, rke2-traefik chart 40.1.003,
-Harvester L4 ingress LB VIP) on 2026-10-12.
+Gateway API wiring for clusters that use RKE2's packaged Traefik. The
+mechanics below were validated on RKE2 v1.33.x with the rke2-traefik
+chart 40.1.003; the dated run records are in `docs/lab-validation-log.md`.
 
 ## Why this exists (the moving parts, named)
 
@@ -10,16 +11,17 @@ Gateway API splits roles across four, and Traefik adds its own vocabulary:
 
 | Piece | Who owns it | What it does |
 |---|---|---|
-| Gateway API CRDs | RKE2 (`rke2-traefik-crds` addon) | installs Gateway/HTTPRoute/etc. — present even when the provider is OFF (CRDs present != provider enabled; confused us once) |
+| Gateway API CRDs | RKE2 (`rke2-traefik-crds` addon) | installs Gateway/HTTPRoute/etc. — present even when the provider is OFF (CRDs present != provider enabled — a common false read) |
 | `providers.kubernetesGateway` | Traefik's HelmChartConfig, fed by **`extraChartValues` in cluster-templates/chart/values.yaml** | turns on Traefik's Gateway controller loop |
 | GatewayClass `traefik` | **the rke2-traefik chart** (auto-created when the provider is on) | platform-level: which controller claims Gateways (`traefik.io/gateway-controller`) |
 | Gateway `traefik` | this bundle | the entry: listeners (port/protocol/hostname) — the "IP + ports" contract |
 | HTTPRoute | app teams, in their own namespace | L7 rules (host/path match -> backend Service) |
 | Harvester L4 ingress LB (harvester-lb/) | this repo | VIP :80/:443 -> node hostPorts -> Traefik pod |
 
-Full data path (work chain): **F5 L7 VIP -> Harvester ingress LB VIP
-(:80/:443) -> node hostPort 80/443 -> Traefik pod entrypoint :8000/:8443
--> Gateway listener -> HTTPRoute -> Service -> pod.**
+Full data path: **upstream L7 balancer (optional) -> Harvester ingress LB
+VIP (:80/:443) -> node hostPort 80/443 -> Traefik pod entrypoint
+:8000/:8443 -> Gateway listener -> HTTPRoute -> Service -> pod.** Without
+an upstream balancer, clients hit the LB VIP directly.
 
 ## Enablement is NOT a bundle resource
 
@@ -40,7 +42,10 @@ Rancher writes that as a HelmChartConfig in the downstream kube-system;
 RKE2's addon controller owns that object — a raw-YAML Fleet bundle that
 tries to author/adopt a HelmChartConfig for rke2-traefik will not stick.
 
-## Pitfalls (all caught live, 2026-10-12)
+## Pitfalls
+
+All observed in practice; the dated run records are in
+`docs/lab-validation-log.md`.
 
 1. **CRDs without a provider.** Gateway API CRDs ship with RKE2's
    traefik-crds addon regardless of the flag. `kubectl get crd | grep
@@ -62,21 +67,21 @@ tries to author/adopt a HelmChartConfig for rke2-traefik will not stick.
    hit the VIP on 80/443.
 5. **Gateway status address is a lie here.** The chart pins
    statusAddress to the rke2-traefik ClusterIP Service (10.43.x). The
-   externally reachable address is the Harvester LB VIP. Upstream (F5)
-   targets the LB VIP, never the Gateway status.
+   externally reachable address is the Harvester LB VIP. Upstream
+   balancers target the LB VIP, never the Gateway status.
 6. **HTTPS listeners need certs.** An HTTPS/8443 listener requires
    `tls.certificateRefs` (a TLS Secret in the Gateway's namespace). The
-   plain HTTP listener here is enough for the lab mock and for an
-   F5-terminates-TLS work chain; add the listener + cert when a cluster
-   must terminate TLS itself.
+   plain HTTP listener here is enough when an upstream balancer
+   terminates TLS; add the listener + cert when a cluster must terminate
+   TLS itself.
 7. **Fleet drift correction is real.** Hand-editing any of this with
    kubectl gets reverted on the next bundle apply. Fix the git, not the
    cluster.
 
-## Prove it out (lab mock — no DNS needed)
+## Prove it out (no DNS needed)
 
 ```
-curl -s -H 'Host: whoami.home.sneezycats.com' http://<ingress-LB-VIP>/   # -> whoami pod echoes
+curl -s -H 'Host: whoami.example.com' http://<ingress-LB-VIP>/   # -> whoami pod echoes
 curl -s -o /dev/null -w '%{http_code}\n' http://<ingress-LB-VIP>/        # -> 404 (no route matched)
 ```
 

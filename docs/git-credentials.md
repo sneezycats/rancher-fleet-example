@@ -84,11 +84,11 @@ dedicated keypair, store the private key in the secret, and pin the host key
 does not prompt on TOFU. Fleet's ssh-auth secret supports `known_hosts`
 directly.
 
-## Lab vs. work
+## When to set `clientSecretName`
 
-The example GitRepo files in this repo carry **no** `clientSecretName` — the
-lab clones public repos over plain http inside the lab network. At work,
-uncomment `clientSecretName` and create the per-workspace secret first. If a
+The example GitRepo files in this repo carry **no** `clientSecretName` —
+they assume public repos over plain http. For a private repo, uncomment
+`clientSecretName` and create the per-workspace secret first. If a
 GitRepo points at a private repo without its secret, Fleet reports
 authentication errors in the GitRepo status (check `status.displayError`).
 

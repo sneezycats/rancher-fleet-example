@@ -39,7 +39,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 ├── harvester-lb/                   # Harvester L4 LBs (IPPool + apiserver/ingress split) — raw YAML
 ├── gateway-traefik/                # Gateway API on bundled Traefik (Gateway + demo HTTPRoute) — raw YAML
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
-├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn)
+├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn + LB + gateway)
 ├── scripts/                        # data layer + verification (baseline/verify)
 └── docs/                           # this approach, documented
 ```
@@ -71,7 +71,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    the `gateway-traefik` GitRepo (`resources/gitrepos/gateway-traefik.yaml`)
    at the workload cluster — see `gateway-traefik/README.md` for the full
    chain (LB VIP -> hostPorts -> Traefik entrypoints -> Gateway ->
-   HTTPRoute) and its live-caught pitfalls.
+   HTTPRoute) and its pitfalls.
 7. **Label the cluster** once it is Ready:
    `kubectl label clusters.fleet.cattle.io -n fleet-default <cluster> managed-by=fleet`
    → Longhorn deploys from its bundle.
@@ -100,7 +100,7 @@ upgrades. The optional `lhcc-rbac` bundle rides the same GitRepo (one extra
 path in `resources/gitrepos/longhorn.yaml`) and pairs a cluster with the
 Longhorn CAPI controller — see UPGRADE.md before wiring it.
 
-## Rules that make it safe (lab-enforced)
+## Rules that make it safe
 
 - One component per commit: cluster change and Longhorn change are separate
   commits, each verified before the next.
@@ -129,4 +129,7 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
   guide (build host setup → bake → verify → import).
 - `docs/promotion-model.md` — the branch-per-environment promotion model:
   dev → staging → production by PR merge, verification gates, hotfixes and
-  rollback (validated in-lab).
+  rollback (validated).
+- `docs/lab-validation-log.md` — dated validation records behind the
+  claims in these docs: what was run, on what versions, with what result.
+  Evidence trail only; nothing there is required to use the repo.

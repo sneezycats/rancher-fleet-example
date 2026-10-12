@@ -59,7 +59,7 @@ topology-free:
 The registration command comes from the cluster itself. UI: Cluster →
 Registration tab (per-role tabs, exact commands) — this is the authoritative
 path in 2.14. There is NO kubectl path: registration tokens are v3 norman
-resources, not CRDs (verified live: no `clusterregistrationtoken` objects
+resources, not CRDs (verified: no `clusterregistrationtoken` objects
 anywhere in the API, and the `/v3/clusterRegistrationTokens` collection
 returns empty for a kubeconfig credential — a real Rancher API key is needed
 for CLI retrieval; unverified). The command form is:
@@ -79,13 +79,15 @@ first:
    service — `systemctl enable --now rke2-server` is a manual step there.
    The system-agent path handles services itself.)
 
-## Pitfalls found in live validation (2026-10-05)
+## Pitfalls found in live validation
+
+(Dated run records: `docs/lab-validation-log.md`.)
 
 - **Set `name:` in values.yaml.** In the git path Fleet names the helm
   release from the bundle (`<gitrepo>-<path>-<hash>`), so an empty `name`
   yields a release-derived CR name
-  (`fleet-proxy-custom-templates-cluster-templates-48f64` in the lab). Fill
-  the name — the per-cluster repo clone does this naturally.
+  (`<gitrepo>-<path>-<hash>`-style, which is not a valid-looking cluster
+  name). Fill the name — the per-cluster repo clone does this naturally.
 - **kubectl apply as an admin kubeconfig is refused** by Rancher's cluster
   webhook: `creatorID annotation does not match user`. Fleet's agent
   identity is unaffected (the template deploys through Fleet fine). If you
@@ -94,8 +96,8 @@ first:
 - The GitRepo for a template bundle reports NotReady while the custom
   cluster waits for nodes ("waiting for at least one control plane, etcd")
   — expected for custom clusters; it goes Ready when the first node
-  registers. (The fleetlab1 template GitRepo sits in the same state while
-  machines provision.)
+  registers. (Machine-provisioned template GitRepos sit in the same state
+  while machines provision.)
 
 ## Topology and Longhorn
 
@@ -116,9 +118,9 @@ extra disks for Longhorn before registration if the defaults don't suit.
 | Piece | Status |
 |---|---|
 | CR schema vs live Rancher 2.14.3 API | server-side dry-run + real create — proven |
-| Custom cluster provisioned via Fleet template | **proven** — the lab GitRepo `fleet-proxy-custom-templates` rendered the chart through Fleet and the Cluster CR was created on live 2.14.3 (`c-m-lvfjtkfs`, phase: progressing / waiting for at least one control plane, etcd — the correct custom-cluster lifecycle: no machines, waiting for registration) |
+| Custom cluster provisioned via Fleet template | **proven** — the chart rendered through Fleet and the Cluster CR was created on live 2.14.3 with the correct custom-cluster lifecycle: no machines, waiting for registration |
 | Registration command retrieval | **UI is the standard path** (Registration tab). CLI retrieval needs a real Rancher API key (v3 collection) — unverified; NOT a kubectl path |
-| Node join via registration command | pending — the lab proxy cluster is live and ready for a VM standing in for metal (the flow is metal-agnostic; same system-agent). PXE/hardware specifics are out of scope by design |
+| Node join via registration command | pending — a proxy cluster stands ready for a VM standing in for metal (the flow is metal-agnostic; same system-agent). PXE/hardware specifics are out of scope by design |
 | Component layer (Longhorn) on a custom cluster | same GitRepo mechanics as any cluster; the `managed-by=fleet` label pitfall applies identically |
 
 ## Work-copy checklist (what to pull when updating the copy)

@@ -1,12 +1,12 @@
 # One L4 LB per PORT GROUP per workload cluster. Split apiserver from
 # ingress: healthCheck.port gates the WHOLE backend set of an LB, not
-# per-listener (verified live 2026-10-12: with healthCheck.port=6443 the
-# workers — which don't serve 6443 — were excluded and the VIP's :80
-# listener went dead; flipping hc to 80 restored :80). So one LB whose
-# listeners span CP-only ports AND worker-only ports cannot health-check
-# both. Each LB consumes one pool IP.
+# per-listener: with healthCheck.port=6443 the workers — which don't
+# serve 6443 — are excluded and the VIP's :80 listener goes dead. So one
+# LB whose listeners span CP-only ports AND worker-only ports cannot
+# health-check both. Each LB consumes one pool IP.
 #
-# Work chain: F5 L7 VIP -> pool member = the ingress LB VIP below.
+# Reference chain: upstream L7 balancer (e.g. F5) -> pool member = the
+# ingress LB VIP below.
 # backendServerSelector matches the labels the Harvester node driver
 # STAMPS AUTOMATICALLY (guestcluster.harvesterhci.io/name = Rancher
 # cluster name) — no manual labeling step.
@@ -35,7 +35,7 @@ spec:
     timeoutSeconds: 3
 ---
 # Ingress/gateway LB — the single pool member an upstream L7 balancer
-# (work: F5) points at. Traefik on RKE2 runs on WORKERS with hostNetwork
+# (e.g. F5) points at. Traefik on RKE2 runs on WORKERS with hostNetwork
 # (hostPort 80/443 on every worker node IP), so backendPort = 80/443
 # directly on the selected VMs' primary IPs. The cluster's ingress owns
 # L7 routing; the LB is port-agnostic TCP below the VIP.

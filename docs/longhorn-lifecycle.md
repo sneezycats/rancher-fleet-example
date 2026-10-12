@@ -4,17 +4,15 @@ The operating contract for clusters built by the cluster template with
 Longhorn volumes aboard: what makes replacement safe, what to run before and
 after a change, and the settings that carry the guarantees.
 
-*Provenance (2026-10-05, Rancher 2.14.3 + Longhorn 1.11.2, in-lab): three
-full serial rolls of all six machines with volume data aboard, verified by
-created-at identity, uninterrupted writer counters, and rebuilt 3/3 replica
-placement on the new workers. Three regimes in one day: with the optional
-lhcc controller present (6.1 -> 6.2), with zero controller (6.2 -> 6.1), and
-with the vendor eviction policy enabled for the maintenance window (6.1 ->
-6.2, including a single-replica volume - the vendor evicted its last replica
-off the doomed node before allowing the drain; the volume stayed attached and
-healthy throughout). Data safety was vendor-native in ALL regimes. One real
-gap: dead nodes' node CRs and replicas do NOT self-clean (see the residue
-step below).*
+*Provenance: the roll procedure below was exercised end-to-end — full
+serial rolls of every machine with volume data aboard, verified by
+created-at identity, uninterrupted writer counters, and rebuilt 3/3
+replica placement — across three regimes: with the optional lhcc
+controller present, with zero controller, and with the vendor eviction
+policy enabled for the maintenance window. Data safety was vendor-native
+in all regimes. One real gap: dead nodes' node CRs and replicas do NOT
+self-clean (see the residue step below). Dated run records:
+`docs/lab-validation-log.md`.*
 
 ## The contract (what makes replacement safe)
 

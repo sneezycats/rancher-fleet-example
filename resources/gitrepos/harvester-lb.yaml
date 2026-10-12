@@ -4,8 +4,10 @@
 # cluster — self-nesting footgun).
 #
 # Namespace MUST be the target cluster's namespace: imported Harvester
-# clusters live in fleet-default (pitfall 1). Selector label verified
-# live: management.cattle.io/cluster-display-name=<harvester display name>.
+# clusters live in fleet-default (README.md pitfall 1). The selector label
+# below (management.cattle.io/cluster-display-name) is the one that works
+# for imported clusters — confirm yours with:
+#   kubectl get clusters.fleet.cattle.io -n fleet-default --show-labels
 apiVersion: fleet.cattle.io/v1alpha1
 kind: GitRepo
 metadata:

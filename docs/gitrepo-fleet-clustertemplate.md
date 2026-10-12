@@ -31,7 +31,9 @@ spec:
         managed-by: fleet
 ```
 
-## Workspace: where the GitRepo lives decides what it can reach (A/B-validated 2026-10-09, 2.14.3)
+## Workspace: where the GitRepo lives decides what it can reach
+
+(A/B-validated on Rancher 2.14.3; dated run records in `docs/lab-validation-log.md`.)
 
 `metadata.namespace` selects the Fleet WORKSPACE, and the workspace is the
 candidate pool a GitRepo can ever target:
@@ -45,7 +47,7 @@ candidate pool a GitRepo can ever target:
   soon as the provisioning Cluster CR lands, not only after nodes join).
 
 Same template chart + values deployed four ways (only the GitRepo workspace/
-targets differed) — single-node all-role instance, observed live:
+targets differed) — single-node all-role instance:
 
 1. **fleet-local, no targets** → bundledeployment in `cluster-fleet-local-
    local-*` → the local agent renders the Cluster CR onto the management API
@@ -74,7 +76,7 @@ bundle/BD names like `<gitrepo>-cluster-templat-46d85`.
 
 **ClusterGroups do not change this.** A ClusterGroup only selects WITHIN its
 own workspace — it cannot make a fleet-default GitRepo reach the management
-API. Validated on 2.14.3: a ClusterGroup with NO selector matched NOTHING
+API. Validated: a ClusterGroup with NO selector matched NOTHING
 (`clusterCount: 0` — do not assume k8s empty-selector match-all semantics),
 and a label-selector group that resolved correctly still delivered the
 template bundle to the DOWNSTREAM agent, which failed with the same
@@ -85,7 +87,7 @@ fleet-default silently repoints every implicit-target (no `spec.targets`)
 GitRepo in that workspace at all matched clusters — keep explicit targets on
 component GitRepos.
 
-## Cluster identity across rebuilds (validated live 2026-10-09)
+## Cluster identity across rebuilds
 
 The management cluster id (`management.cattle.io/cluster-name`, `c-m-...`) is
 minted fresh EVERY time the provisioning Cluster CR is created: a same-name
@@ -100,7 +102,7 @@ a same-name rebuild. Pin component repos with
 `targets: [{clusterName: <cluster-name>}]`: it resolves the moment the
 cluster registers (0/0 silent before that) and re-attaches across rebuilds
 with ZERO repo changes — verified end-to-end with a canary bundle through a
-full delete/rebuild cycle (~6 min rebuild, instant re-attach).
+full delete/rebuild cycle (run records in `docs/lab-validation-log.md`).
 
 Related: a template GitRepo with `spec.correctDrift.enabled: true` re-creates
 a deleted Cluster CR in seconds (no new commit needed). With correctDrift

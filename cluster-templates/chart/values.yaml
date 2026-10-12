@@ -41,7 +41,8 @@ sshUser: "<REPLACE_ME_SSH_USER>"                # user the node driver provision
 userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
 
 # --- RKE2 global config (cilium + traefik) ---
-# cni: cilium is the work standardization. RKE2's packaged default is Canal
+# cni: cilium is the example's standardization choice. RKE2's packaged
+# default is Canal
 # (rke2-canal); accepted values: canal, calico, cilium, multus (and dual
 # combos like cilium-calico on newer lines). Changing cni on an EXISTING
 # cluster is not supported — it is a create-time choice.
@@ -102,7 +103,7 @@ harvesterCloudProvider:
 #         ingressClass: rke2-ingress-nginx-migration
 #         controllerClass: rke2.cattle.io/ingress-nginx-migration
 extraChartValues:
-  # Gateway API on the bundled Traefik (work standard) — pairs with the
+  # Gateway API on the bundled Traefik (the example's standard) — pairs with the
   # gateway-traefik/ bundle. Rancher writes each key below as a
   # HelmChartConfig in the downstream kube-system, which the rke2-traefik
   # helm-install job consumes. kubernetesGateway (capital G — the

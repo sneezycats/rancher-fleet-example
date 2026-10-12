@@ -1,0 +1,25 @@
+# Gateway API bundle -> a DOWNSTREAM workload cluster (NOT the Harvester
+# cluster — contrast with the harvester-lb GitRepo which targets the
+# Harvester host cluster). Namespace rule: GitRepo lives where the
+# target's clusters.fleet object lives (fleet-default for provisioned
+# clusters).
+#
+# PREREQUISITE: extraChartValues in cluster-templates/chart/values.yaml
+# must carry the rke2-traefik kubernetesGateway enable + gateway.enabled
+# false (see gateway-traefik/README.md) BEFORE this bundle lands, or the
+# Gateway sits Accepted=False with no controller.
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: <REPLACE_ME_CLUSTER>-gateway-traefik
+  namespace: fleet-default
+spec:
+  repo: <REPLACE_ME_GIT_URL>
+  branch: <REPLACE_ME_BRANCH>
+  paths:
+  - gateway-traefik
+  targets:
+  - name: <REPLACE_ME_CLUSTER>
+    clusterSelector:
+      matchLabels:
+        management.cattle.io/cluster-display-name: <REPLACE_ME_CLUSTER>

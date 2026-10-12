@@ -1,0 +1,39 @@
+# Cluster-wide entry Gateway (see README.md pitfall 4 before editing ports).
+#
+# Listener port = Traefik ENTRYPOINT CONTAINER port (web=:8000,
+# websecure=:8443), NOT the node hostPort (80/443). The Harvester L4
+# ingress LB (harvester-lb/) fronts the hostPorts; upstream (work: F5)
+# targets that VIP.
+#
+# The chart's own auto-Gateway is suppressed via
+# extraChartValues.gateway.enabled=false so this bundle owns the single
+# cluster Gateway.
+#
+# STATUS ADDRESS CAVEAT: status shows the rke2-traefik ClusterIP
+# (10.43.x), not the reachable VIP — cosmetic, see README pitfall 5.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: http
+      port: 8000
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS/TLS-terminating variant (needs a TLS Secret in kube-system
+    # and a matching websecure entrypoint at :8443 — default in RKE2):
+    # - name: https
+    #   port: 8443
+    #   protocol: HTTPS
+    #   tls:
+    #     mode: Terminate
+    #     certificateRefs:
+    #       - name: <REPLACE_ME_TLS_SECRET>
+    #   allowedRoutes:
+    #     namespaces:
+    #       from: All

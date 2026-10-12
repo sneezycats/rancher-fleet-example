@@ -1,0 +1,21 @@
+# The app-team piece: hostname match into the Gateway's http listener.
+# This is what every workload copies — one HTTPRoute per app, in the
+# app's own namespace (the Gateway allows routes from All namespaces).
+# Test without DNS:
+#   curl -H 'Host: whoami.example.com' http://<ingress-LB-VIP>/
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whoami
+  namespace: gateway-demo
+spec:
+  parentRefs:
+    - name: traefik
+      namespace: kube-system
+      sectionName: http
+  hostnames:
+    - whoami.<REPLACE_ME_DOMAIN>
+  rules:
+    - backendRefs:
+        - name: whoami
+          port: 80

@@ -1,0 +1,3 @@
+# Raw-YAML bundle (default operation). Do NOT add a helm: block here —
+# any helm: key switches the path to Helm operation and a chartless
+# directory then renders ZERO resources (harvester-lb/README.md pitfall 3).

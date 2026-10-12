@@ -36,6 +36,8 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 │   ├── chart/                      # ONE Cluster CR, no machinePools (nodes register themselves)
 │   └── README.md                   # registration runbook (roles via command flags)
 ├── fleet/bundles/longhorn/         # Longhorn bundle - ONE fleet.yaml: version pin + values
+├── harvester-lb/                   # Harvester L4 LBs (IPPool + apiserver/ingress split) — raw YAML
+├── gateway-traefik/                # Gateway API on bundled Traefik (Gateway + demo HTTPRoute) — raw YAML
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn)
 ├── scripts/                        # data layer + verification (baseline/verify)
@@ -64,10 +66,16 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 5. **Deploy**: either let Fleet install the template bundle from the GitRepo,
    or bypass for the first build:
    `helm install <cluster> ./cluster-templates/chart`
-6. **Label the cluster** once it is Ready:
+6. **Optional ingress chain**: enable Gateway API on the bundled Traefik
+   via `extraChartValues` (cluster-templates/chart/values.yaml) and point
+   the `gateway-traefik` GitRepo (`resources/gitrepos/gateway-traefik.yaml`)
+   at the workload cluster — see `gateway-traefik/README.md` for the full
+   chain (LB VIP -> hostPorts -> Traefik entrypoints -> Gateway ->
+   HTTPRoute) and its live-caught pitfalls.
+7. **Label the cluster** once it is Ready:
    `kubectl label clusters.fleet.cattle.io -n fleet-default <cluster> managed-by=fleet`
    → Longhorn deploys from its bundle.
-7. **Data layer + verification**: apply the data layer against the new
+8. **Data layer + verification**: apply the data layer against the new
    cluster's kubeconfig (`kubectl apply -f scripts/01-pvcs.yaml -f
    scripts/02-data-deployments.yaml`), then capture a baseline with
    `scripts/baseline.sh` before every round and run `scripts/verify.sh`

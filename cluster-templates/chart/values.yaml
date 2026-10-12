@@ -101,7 +101,22 @@ harvesterCloudProvider:
 #         enabled: true
 #         ingressClass: rke2-ingress-nginx-migration
 #         controllerClass: rke2.cattle.io/ingress-nginx-migration
-extraChartValues: {}
+extraChartValues:
+  # Gateway API on the bundled Traefik (work standard) — pairs with the
+  # gateway-traefik/ bundle. Rancher writes each key below as a
+  # HelmChartConfig in the downstream kube-system, which the rke2-traefik
+  # helm-install job consumes. kubernetesGateway (capital G — the
+  # 2026+ chart line; wrong case is silently ignored) turns on the
+  # Gateway controller AND makes the chart create+own GatewayClass
+  # `traefik`; gateway.enabled=false suppresses the chart's own
+  # auto-Gateway so the bundle owns the single cluster Gateway.
+  # Full chain + live-caught pitfalls: gateway-traefik/README.md.
+  rke2-traefik:
+    providers:
+      kubernetesGateway:
+        enabled: true
+    gateway:
+      enabled: false
 
 # --- Node pools (example: 3 CP @ 6 vCPU/6 GiB + 3 workers @ 6 vCPU/4 GiB) ---
 nodepools:

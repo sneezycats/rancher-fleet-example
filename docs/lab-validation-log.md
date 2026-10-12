@@ -136,6 +136,22 @@ Node join via registration command: pending as of that date.
 | 6.0 / 6.1 ports | 2026-09-25 | Identical recipe to v3g, plus `btrfs property set / ro false` during bake: 6.0/6.1 have no writable `/etc` subvol — `/etc` is an fstab overlay whose lower layer lives on the btrfs root subvol `@` (`ro=true` by default). The flip is required before `virt-customize --upload` writes; at runtime `/etc` stays writable through the overlay (upper in `/var/lib/overlay`, on the rw `/var` subvol). |
 | v4g | 2026-09-26/27 | Re-tag of v3g — byte-identical output; the tag iterates the golden-image generation, not content (it drove the fleet image-hop cycle, 6.0→6.1→6.2). Verify a re-tag by exact byte size: 6.0 = 1324875776, 6.1 = 1345191936, 6.2 = 1451687936. |
 
+## Ingress LB worker-pool selection via machineSetName (2026-10-12)
+
+Verified on the lab's 6-node RKE2 cluster (3 CP + 3 workers, Harvester
+1.7.1): every node-driver VM carries `harvesterhci.io/machineSetName =
+<vmNamespace>-<clusterName>-<poolName>` (e.g. `k8s-infra-fleetlab5-workers`)
+and `nodepool.harvesterhci.io/name = <poolName>-<5-char generated
+suffix>`. The bundled rke2-traefik DaemonSet runs on workers only (CP
+nodes tainted NoSchedule, no tolerations in the chart) — with the
+whole-cluster selector, the LB endpoint slice held all 6 VM IPs and the
+CPs sat in the backend set failing the :80 health check. Switching the
+ingress LB's `backendServerSelector` to
+`harvesterhci.io/machineSetName: [<ns>-<cluster>-workers]` shrank the
+endpoint slice to the 3 worker IPs; the VIP kept serving (HTTPRoute →
+whoami echo through it), LB Ready=True. The optional apiserver LB
+selects the CP pool the same way.
+
 ## Reference-lab artifact locations (bake guide §8)
 
 The bake guide is written generically; the reference lab kept these on a

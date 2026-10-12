@@ -38,9 +38,10 @@ Under the default Rancher posture, usually not:
 - `kubectl` to a downstream cluster rides the Rancher proxy
   (`https://<rancher>/k8s/clusters/<id>`) — no direct route to the guest
   API server is required.
-- Node agents **dial out** to the Rancher URL (verified: the RKE2
-  node-plan `server:` entry is the Rancher URL, not a cluster VIP), and
-  inter-node RKE2 traffic (9345 join, etcd) uses node IPs directly.
+- Node agents **dial out** to the Rancher URL to fetch their plans
+  (verified in the machine-bootstrap secret). One nuance: the RKE2 join
+  itself — the `server:` entry in the node's `50-rancher.yaml` — pins a
+  single control-plane node's IP:9345, not a VIP.
 
 So the ingress LB alone covers the work chain. Add an apiserver LB only
 when you want one of:
@@ -87,12 +88,18 @@ All observed in practice; the dated run records are in
     silently killed the VIP's :80 path). If you run both an apiserver LB
     and an ingress LB, keep them split, each with a matching
     healthCheck port.
-11. **Traefik on RKE2 = hostNetwork on workers** (hostPort 80/443 on the
-    worker node IPs), so the ingress LB can select the worker pool via
-    nodepool.harvesterhci.io/name — but the pool name carries a generated
-    suffix (workers-<5chars>); read it off a live VM (`kubectl get vm
-    --show-labels`) or select the whole cluster and let the health check
-    trim.
+11. **Ingress runs on workers only** (bundled Traefik on RKE2, like
+    ingress-nginx before it: CP nodes carry NoSchedule taints and the
+    chart adds no tolerations), so the ingress LB should select the
+    worker pool. Use `harvesterhci.io/machineSetName` — value is
+    `<vmNamespace>-<clusterName>-<poolName>`, deterministic from the
+    Cluster CR (`poolName` = `machinePools[].name`). Avoid
+    `nodepool.harvesterhci.io/name`: its value carries a generated
+    per-machine-deployment suffix (`workers-<5chars>`) that no manifest
+    declares. Selecting the whole cluster also works — the health check
+    quietly drops the CPs — but leaves them in the backend set failing
+    probes, and it defeats CP segregation if you ever untaint or
+    co-locate workloads.
 12. **Listener changes do not prune the owned Service's ports.** The
     controller ADDS ports on listener edits but never removes them —
     stale listeners keep routing (and can shadow the health-check

@@ -8,15 +8,25 @@
 # Reference chain: upstream L7 balancer (e.g. F5) -> pool member = the
 # ingress LB VIP below.
 # backendServerSelector matches the labels the Harvester node driver
-# STAMPS AUTOMATICALLY (guestcluster.harvesterhci.io/name = Rancher
-# cluster name) — no manual labeling step. One selector is enough; the
-# IPPool has its own separate scope selector (ippool.yaml) — different
+# STAMPS AUTOMATICALLY — no manual labeling step. Useful ones:
+#   guestcluster.harvesterhci.io/name = <clusterName>        (whole cluster)
+#   harvesterhci.io/machineSetName    = <vmNamespace>-<clusterName>-<poolName>
+#                                          (one pool; deterministic — poolName
+#                                           is the machinePools[].name from the
+#                                           Cluster CR)
+#   nodepool.harvesterhci.io/name     = <poolName>-<5-char suffix> (AVOID for
+#                                       GitOps: the suffix is generated per
+#                                       machine deployment)
+# The IPPool has its own separate scope selector (ippool.yaml) — different
 # object, different job.
+#
 # Ingress/gateway LB — the single pool member an upstream L7 balancer
-# (e.g. F5) points at. Traefik on RKE2 runs on WORKERS with hostNetwork
-# (hostPort 80/443 on every worker node IP), so backendPort = 80/443
-# directly on the selected VMs' primary IPs. The cluster's ingress owns
-# L7 routing; the LB is port-agnostic TCP below the VIP.
+# (e.g. F5) points at. RKE2's bundled Traefik (like ingress-nginx before
+# it) is a WORKERS-only DaemonSet: CP nodes carry NoSchedule taints and
+# the chart adds no tolerations, so hostPort 80/443 exist only on worker
+# IPs. Select the worker pool: CPs in the backend set would sit in it
+# failing health checks. The cluster's ingress owns L7 routing; the LB
+# is port-agnostic TCP below the VIP.
 apiVersion: loadbalancer.harvesterhci.io/v1beta1
 kind: LoadBalancer
 metadata:
@@ -36,13 +46,12 @@ spec:
       protocol: TCP
       backendPort: 443
   backendServerSelector:
-    # Narrow to workers if the ingress DaemonSet runs only there (it does
-    # on RKE2+traefik by default); broaden to the whole cluster if
-    # ingress runs on CPs too.
-    guestcluster.harvesterhci.io/name:
-      - <REPLACE_ME_CLUSTER>
-    nodepool.harvesterhci.io/name:
-      - <REPLACE_ME_WORKER_POOL>         # e.g. workers-<5chars> — pool suffix is generated; see README pitfall 11
+    # Worker pool only: machineSetName encodes namespace+cluster+pool in
+    # one deterministic label (poolName = machinePools[].name from the
+    # Cluster CR). CPs are excluded — bundled Traefik doesn't run there.
+    harvesterhci.io/machineSetName:
+      - <REPLACE_ME_VM_NAMESPACE>-<REPLACE_ME_CLUSTER>-<REPLACE_ME_WORKER_POOL>
+      # e.g. prod-ns-mycluster-workers
   healthCheck:
     port: 80                             # gates the whole set — keep it an ingress port
     successThreshold: 1
@@ -77,8 +86,10 @@ spec:
 #       protocol: TCP
 #       backendPort: 6443
 #   backendServerSelector:
-#     guestcluster.harvesterhci.io/name:
-#       - <REPLACE_ME_CLUSTER>
+#     # CP pool only — 6443 is served there.
+#     harvesterhci.io/machineSetName:
+#       - <REPLACE_ME_VM_NAMESPACE>-<REPLACE_ME_CLUSTER>-<REPLACE_ME_CP_POOL>
+#       # e.g. prod-ns-mycluster-control-plane
 #   healthCheck:
 #     port: 6443                         # must equal a listener backendPort
 #     successThreshold: 1

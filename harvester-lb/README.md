@@ -65,3 +65,10 @@ author those yourself.
     suffix (workers-<5chars>); read it off a live VM (`kubectl get vm
     --show-labels`) or select the whole cluster and let the health check
     trim.
+
+12. **Listener changes do not prune the owned Service's ports.** The
+    controller ADDS ports on listener edits but never removes them —
+    stale listeners keep routing (and can shadow the health-check
+    change you just made). On any listener-shape change, delete the LB
+    and let Fleet re-create it (same pool IP is re-allocated — verified:
+    .200 came back identical after recreate).

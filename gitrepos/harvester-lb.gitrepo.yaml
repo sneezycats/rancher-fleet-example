@@ -1,0 +1,23 @@
+# GitRepo for the harvester-lb path -> the HARVESTER (management) cluster.
+# Applied MANUALLY (kubectl apply) to the Rancher mgmt cluster; never
+# Fleet-tracked (a GitRepo inside a tracked path lands on the downstream
+# cluster — self-nesting footgun).
+#
+# Namespace MUST be the target cluster's namespace: imported Harvester
+# clusters live in fleet-default (pitfall 1). Selector label verified
+# live: management.cattle.io/cluster-display-name=<harvester display name>.
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: <REPLACE_ME_CLUSTER>-harvester-lb
+  namespace: fleet-default
+spec:
+  repo: "<REPLACE_ME_REPO_URL>"
+  branch: main
+  paths:
+  - harvester-lb
+  targets:
+  - name: <REPLACE_ME_HARVESTER_CLUSTER>
+    clusterSelector:
+      matchLabels:
+        management.cattle.io/cluster-display-name: <REPLACE_ME_HARVESTER_CLUSTER>

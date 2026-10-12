@@ -1,0 +1,18 @@
+# Static IP pool for LB VIPs. Keep the range OUTSIDE the DHCP pool —
+# verify the DHCP scope first (e.g. Kea pools on the DHCP server) so the
+# VIPs can never collide with a lease. 3 IPs covers one VIP per cluster
+# plus headroom; a single-node host won't host many LBs.
+apiVersion: loadbalancer.harvesterhci.io/v1beta1
+kind: IPPool
+metadata:
+  name: <REPLACE_ME_POOL>
+spec:
+  selector:
+    priority: 1
+    scope:            # ARRAY of scope objects (pitfall 4)
+      - namespace: <REPLACE_ME_VM_NAMESPACE>
+  ranges:
+    - rangeStart: <REPLACE_ME_IP_START>
+      rangeEnd: <REPLACE_ME_IP_END>
+      subnet: <REPLACE_ME_SUBNET>
+      gateway: <REPLACE_ME_GATEWAY>

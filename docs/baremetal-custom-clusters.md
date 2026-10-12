@@ -35,7 +35,7 @@ spec:
   enableNetworkPolicy: false
   kubernetesVersion: <pinned>
   rkeConfig:
-    machineGlobalConfig:   # cni: calico, ingress-controller: traefik (clickops parity)
+    machineGlobalConfig:   # cni: cilium, ingress-controller: traefik
       ...
     # machinePools ABSENT -> custom cluster
 ```

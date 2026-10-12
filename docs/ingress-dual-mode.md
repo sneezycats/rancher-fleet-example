@@ -45,7 +45,7 @@ workload's Ingress with that class; NGINX keeps serving the original).
 
 ```yaml
 machineGlobalConfig:
-  cni: calico
+  cni: cilium
   ingress-controller: [traefik, ingress-nginx]   # dual; first = default class
 
 extraChartValues:

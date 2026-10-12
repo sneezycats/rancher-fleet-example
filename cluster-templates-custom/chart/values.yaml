@@ -13,10 +13,10 @@ description: ""
 # https://www.suse.com/suse-rancher/support-matrix/
 kubernetesVersion: "v1.33.13+rke2r1"
 
-# RKE2 global config (clickops-parity shape: calico + traefik, same as the
-# Harvester template).
+# RKE2 global config (cilium + traefik — same as the Harvester template;
+# work standardizes on cilium; calico remains a valid override.)
 machineGlobalConfig:
-  cni: calico
+  cni: cilium
   ingress-controller: traefik
 
 # Optional passthrough for rkeConfig.chartValues (empty = omit the field).

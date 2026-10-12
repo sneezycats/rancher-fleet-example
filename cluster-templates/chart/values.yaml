@@ -40,7 +40,11 @@ sshUser: "<REPLACE_ME_SSH_USER>"                # user the node driver provision
 # IMPORTANT: do not commit real keys — reference a secret-managed file or CI var.
 userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
 
-# --- RKE2 global config (example: calico + traefik, clickops-parity shape) ---
+# --- RKE2 global config (cilium + traefik) ---
+# cni: cilium is the work standardization. RKE2's packaged default is Canal
+# (rke2-canal); accepted values: canal, calico, cilium, multus (and dual
+# combos like cilium-calico on newer lines). Changing cni on an EXISTING
+# cluster is not supported — it is a create-time choice.
 # `ingress-controller` is the same knob the Rancher cluster UI's Ingress
 # section manages. Accepted values (RKE2 `--ingress-controller`):
 #   traefik                  - Traefik only (the UI's "Traefik" card; default
@@ -60,7 +64,7 @@ userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
 # a dual deployment MUST move one of them - see `extraChartValues` below for
 # the exact Traefik values the UI writes for Dual Mode.
 machineGlobalConfig:
-  cni: calico
+  cni: cilium
   ingress-controller: traefik
 
 # Harvester cloud-provider chart values (CCM installed on control-plane nodes)

@@ -14,7 +14,7 @@ Fill `chart/values.yaml`:
 name: "your-bm-cluster"
 kubernetesVersion: "v1.33.13+rke2r1"   # check the support matrix first
 machineGlobalConfig:
-  cni: calico
+  cni: cilium
   ingress-controller: traefik
 ```
 

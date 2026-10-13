@@ -91,6 +91,13 @@ push; Fleet adopts the existing release in place (validated on Rancher
 2.14.1/2.14.3, no pod churn). Values live in the same file, so version and
 values cannot drift apart.
 
+Capacity headroom is pinned explicitly rather than left implicit:
+`defaultSettings.storageReservedPercentageForDefaultDisk` (Longhorn's own
+default, 30) is the share of each node's filesystem never allocated to the
+default disk — the only disk in single-disk deployments. It is evaluated
+when a node's default disk is first created, so changing it affects nodes
+added afterwards, not existing ones.
+
 (An air-gap vendored variant was retired from this repo: if you ever need
 it, vendor the chart into the bundle dir, point `helm.chart` at it, drop
 `repo`/`version`, and let the vendored `Chart.yaml` become the pin.)

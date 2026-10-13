@@ -41,3 +41,17 @@ helm:
       # spreading is a separate setting (replicaZoneSoftAntiAffinity) for
       # zonal clusters.
       replicaSoftAntiAffinity: "false"
+      # Storage Reserved Percentage For Default Disk: the share of each node's
+      # filesystem that Longhorn never allocates to the DEFAULT disk
+      # (/var/lib/longhorn) — headroom for the OS and everything else living
+      # on that filesystem. In single-disk node deployments the default disk
+      # is the only disk, so this is THE capacity knob; multi-disk nodes set
+      # a per-disk reserved value in the node-disk config instead, which this
+      # setting does not touch. Pinned explicitly at Longhorn's own default
+      # (30) so the value is GitOps-visible and tunable rather than implicit.
+      # CAVEAT (vendor docs): the percentage is evaluated when a node's
+      # default disk is first created — at install or when a node joins.
+      # Changing this value later does NOT rewrite existing nodes' reserved
+      # bytes (nodes.longhorn.io spec.disks.*.storageReserved); it takes
+      # effect for nodes added afterwards.
+      storageReservedPercentageForDefaultDisk: "30"

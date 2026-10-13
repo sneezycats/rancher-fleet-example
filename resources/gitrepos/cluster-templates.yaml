@@ -37,7 +37,7 @@ spec:
   # identically after a same-name rebuild. NEVER pin the management id
   # (management.cattle.io/cluster-name, c-m-...): it REGENERATES on every
   # rebuild, leaving the component repo silently at 0/0 on a dead id.
-  # PRIVATE REPO (work): uncomment and create the client secret first —
+  # PRIVATE REPO: uncomment and create the client secret first —
   # see docs/git-credentials.md. The examples assume anon http clones of public
   # repos, so this is commented out here.
   # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret, SAME namespace as this GitRepo

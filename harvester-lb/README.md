@@ -1,4 +1,4 @@
-# harvester-lb — GitOps'd Harvester Layer-4 LB (no UI click-ops)
+# harvester-lb — GitOps'd Harvester Layer-4 LB (no manual UI steps)
 
 The Harvester UI "create LoadBalancer" button is a form over two plain
 CRDs (`loadbalancer.harvesterhci.io/v1beta1`: `IPPool` + `LoadBalancer`).
@@ -59,8 +59,7 @@ TLS name mismatches. The template ships it commented out for this reason.
 
 ## Pitfalls
 
-All observed in practice; the dated run records are in
-`docs/lab-validation-log.md`.
+All observed in practice.
 
 1. **GitRepo namespace = target cluster namespace.** Imported Harvester
    clusters live in `fleet-default`; a `fleet-local` GitRepo matches zero
@@ -68,12 +67,13 @@ All observed in practice; the dated run records are in
 2. **Targeting is `spec.targets[].clusterSelector`** — there is no
    `targetClusterSelector` field; strict decoding refuses the manifest.
 3. **A chartless path with any `helm:` block renders ZERO resources.**
-   Raw YAML needs no helm block (bundle existed with resources: null).
+   Raw YAML needs no helm block (observed: the bundle reported `resources: null`).
 4. **IPPool `spec.selector.scope` is an ARRAY** of
    `{namespace|project|guestCluster}` objects — a map is rejected by
    Fleet's typed patch.
-5. **Selector matches VMI labels.** The node driver stamps both VM and
-   VMI, so this only bites hand-labeled VMs.
+5. **Selector matches VirtualMachineInstance (VMI) labels, not the VM's.**
+   The node driver stamps labels on both the VM and its VMI, so this only
+   bites hand-labeled VMs.
 6. **LB before cluster is safe**: zero backends sits `Ready=False
    "no running backend servers"` and self-heals when VMs appear.
 7. `healthCheck.port` must equal one listener `backendPort`;

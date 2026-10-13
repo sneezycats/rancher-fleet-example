@@ -6,9 +6,9 @@ modes that are invisible in the UI. Written for someone returning to this
 repo after months of other work — every command is copy-pasteable with
 placeholders.
 
-*Provenance: mechanics validated on Rancher 2.14-era; dated run records in
-`docs/lab-validation-log.md`. Field names move between Rancher versions —
-re-validate against yours.*
+*Provenance: mechanics validated on Rancher 2.14.x-era installs (RKE2 1.33
+line, Harvester-provisioned clusters). Field names move between Rancher
+versions — re-validate against yours.*
 
 ## The 30-second version
 

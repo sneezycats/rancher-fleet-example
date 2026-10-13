@@ -61,7 +61,7 @@ spec:
   # (inert without the controller). See UPGRADE.md, "The optional lhcc-rbac
   # bundle", before uncommenting.
   # - fleet/bundles/lhcc-rbac
-  # PRIVATE REPO (work): uncomment and create the client secret first -
+  # PRIVATE REPO: uncomment and create the client secret first -
   # see docs/git-credentials.md. The examples assume anon http clones of public
   # repos, so this is commented out here.
   # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret, SAME namespace as this GitRepo

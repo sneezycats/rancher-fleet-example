@@ -42,10 +42,11 @@ userData: "<REPLACE_ME_BASE64_CLOUDINIT>"
 
 # --- RKE2 global config (cilium + traefik) ---
 # cni: cilium is the example's standardization choice. RKE2's packaged
-# default is Canal
-# (rke2-canal); accepted values: canal, calico, cilium, multus (and dual
-# combos like cilium-calico on newer lines). Changing cni on an EXISTING
-# cluster is not supported — it is a create-time choice.
+# default is Canal (rke2-canal); primary options: canal, calico, cilium,
+# flannel, or none (bring your own CNI). Multus is a secondary CNI enabled
+# alongside a primary (raw RKE2 config form: cni: [multus, canal]).
+# Changing cni on an EXISTING cluster is not supported — it is a
+# create-time choice.
 # `ingress-controller` is the same knob the Rancher cluster UI's Ingress
 # section manages. Accepted values (RKE2 `--ingress-controller`):
 #   traefik                  - Traefik only (the UI's "Traefik" card; default
@@ -106,8 +107,9 @@ extraChartValues:
   # Gateway API on the bundled Traefik (the example's standard) — pairs with the
   # gateway-traefik/ bundle. Rancher writes each key below as a
   # HelmChartConfig in the downstream kube-system, which the rke2-traefik
-  # helm-install job consumes. kubernetesGateway (capital G — the
-  # 2026+ chart line; wrong case is silently ignored) turns on the
+  # helm-install job consumes. kubernetesGateway (exact key
+  # spelling — Helm values keys are case-sensitive; a wrong-cased key is
+  # silently ignored) turns on the
   # Gateway controller AND makes the chart create+own GatewayClass
   # `traefik`; gateway.enabled=false suppresses the chart's own
   # auto-Gateway so the bundle owns the single cluster Gateway.

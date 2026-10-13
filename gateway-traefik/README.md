@@ -2,7 +2,7 @@
 
 Gateway API wiring for clusters that use RKE2's packaged Traefik. The
 mechanics below were validated on RKE2 v1.33.x with the rke2-traefik
-chart 40.1.003; the dated run records are in `docs/lab-validation-log.md`.
+chart 40.1.003.
 
 ## Why this exists (the moving parts, named)
 
@@ -33,7 +33,7 @@ extraChartValues:
   rke2-traefik:
     providers:
       kubernetesGateway:
-        enabled: true     # capital G = the 2026+ chart line; wrong case is silently ignored
+        enabled: true     # exact key spelling — Helm values keys are case-sensitive; a wrong-cased key is silently ignored
     gateway:
       enabled: false      # suppress the chart's own Gateway (see pitfall 3)
 ```
@@ -44,8 +44,7 @@ tries to author/adopt a HelmChartConfig for rke2-traefik will not stick.
 
 ## Pitfalls
 
-All observed in practice; the dated run records are in
-`docs/lab-validation-log.md`.
+All observed in practice.
 
 1. **CRDs without a provider.** Gateway API CRDs ship with RKE2's
    traefik-crds addon regardless of the flag. `kubectl get crd | grep

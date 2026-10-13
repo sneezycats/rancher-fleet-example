@@ -11,8 +11,7 @@ replica placement — across three regimes: with the optional lhcc
 controller present, with zero controller, and with the vendor eviction
 policy enabled for the maintenance window. Data safety was vendor-native
 in all regimes. One real gap: dead nodes' node CRs and replicas do NOT
-self-clean (see the residue step below). Dated run records:
-`docs/lab-validation-log.md`.*
+self-clean (see the residue step below).*
 
 ## The contract (what makes replacement safe)
 

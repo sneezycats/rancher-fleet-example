@@ -33,7 +33,7 @@ spec:
 
 ## Workspace: where the GitRepo lives decides what it can reach
 
-(A/B-validated on Rancher 2.14.3; dated run records in `docs/lab-validation-log.md`.)
+(A/B-validated on Rancher 2.14.3.)
 
 `metadata.namespace` selects the Fleet WORKSPACE, and the workspace is the
 candidate pool a GitRepo can ever target:
@@ -102,7 +102,7 @@ a same-name rebuild. Pin component repos with
 `targets: [{clusterName: <cluster-name>}]`: it resolves the moment the
 cluster registers (0/0 silent before that) and re-attaches across rebuilds
 with ZERO repo changes — verified end-to-end with a canary bundle through a
-full delete/rebuild cycle (run records in `docs/lab-validation-log.md`).
+full delete/rebuild cycle.
 
 Related: a template GitRepo with `spec.correctDrift.enabled: true` re-creates
 a deleted Cluster CR in seconds (no new commit needed). With correctDrift
@@ -151,7 +151,8 @@ values, quoting belongs only in YAML files where the parser strips it.
 
 ## Clickops note
 
-UI changes to a live cluster converge on the same mechanism (config content
+*Clickops* = making changes by clicking in the Rancher UI instead of going through
+git. UI changes to a live cluster converge on the same mechanism (config content
 hash -> machine roll). Whatever path you used, sync the chart values back and
 commit: the repo is the canonical description of the cluster.
 

@@ -74,14 +74,12 @@ Two paths exist for bare metal and they are NOT the same — this repo uses the
 first:
 1. **Rancher custom-node registration** (system-agent `install.sh`) — the
    agent joins the Rancher-managed cluster; Fleet owns the lifecycle.
-2. Raw RKE2 install + cluster import (clickops) — out of Fleet's reach; not
+2. Raw RKE2 install + cluster import (manual UI/CLI) — out of Fleet's reach; not
    our standard. (Note: the raw installer exits 0 without enabling the
    service — `systemctl enable --now rke2-server` is a manual step there.
    The system-agent path handles services itself.)
 
 ## Pitfalls found in live validation
-
-(Dated run records: `docs/lab-validation-log.md`.)
 
 - **Set `name:` in values.yaml.** In the git path Fleet names the helm
   release from the bundle (`<gitrepo>-<path>-<hash>`), so an empty `name`
@@ -123,7 +121,7 @@ extra disks for Longhorn before registration if the defaults don't suit.
 | Node join via registration command | pending — a proxy cluster stands ready for a VM standing in for metal (the flow is metal-agnostic; same system-agent). PXE/hardware specifics are out of scope by design |
 | Component layer (Longhorn) on a custom cluster | same GitRepo mechanics as any cluster; the `managed-by=fleet` label pitfall applies identically |
 
-## Work-copy checklist (what to pull when updating the copy)
+## Checklist for updating a derived copy
 
 1. `cluster-templates-custom/` (chart + README) — new, no churn to the
    Harvester path.

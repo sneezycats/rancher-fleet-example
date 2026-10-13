@@ -130,6 +130,3 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
 - `docs/promotion-model.md` — the branch-per-environment promotion model:
   dev → staging → production by PR merge, verification gates, hotfixes and
   rollback (validated).
-- `docs/lab-validation-log.md` — dated validation records behind the
-  claims in these docs: what was run, on what versions, with what result.
-  Evidence trail only; nothing there is required to use the repo.

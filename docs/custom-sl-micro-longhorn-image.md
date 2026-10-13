@@ -14,7 +14,7 @@ document is the full step-by-step procedure.
 
 > **Provenance:** this guide is written generically. The reference lab's
 > artifact locations, golden-image version history, and scripted-import
-> details are consolidated in `docs/lab-validation-log.md`. Companion
+> details live in that lab's own doc set, outside this repo. Companion
 > documents outside this repo (`longhorn-maintenance-behavior.md`,
 > `cdi-vmimage-import-howto.md`, `harvester-longhorn-single-mig-sc.yaml`,
 > `docs/bootcmd-vs-runcmd.md`) point at that lab's doc set — substitute
@@ -365,8 +365,8 @@ suppression.
 
 ## 3.1 Bake version history (what changed per golden image)
 
-The dated per-version history (v3d → v4g, with the exact byte sizes that
-prove a re-tag) lives in `docs/lab-validation-log.md`. The lessons that
+The reference lab keeps a dated per-version history (v3d → v4g, with the
+exact byte sizes that prove a re-tag). The lessons that
 shaped the recipe:
 
 - **`/usr/local/lib/systemd` trap:** units there are "enabled" yet never
@@ -451,7 +451,7 @@ reference lab's doc set) for a migratable single-node example.
 > `VirtualMachineImage` with a flat `sourceType: download` — name chosen by you,
 > `displayName` = the chart's `imageName`. Full walkthrough:
 > `cdi-vmimage-import-howto.md` (reference lab's doc set). Either path lands the
-> same VMI; the CDI path is scriptable and survives rebuilds.
+> same VirtualMachineImage (VMI); the CDI path is scriptable and survives rebuilds.
 
 ---
 
@@ -480,7 +480,7 @@ validated with [longhorn-capi-controller](https://github.com/sneezycats/longhorn
 
 This guide is self-contained: the scripts it prints ARE the artifacts. The
 reference lab's artifact locations (build-host paths, image names, the
-CDI import walkthrough) are listed in `docs/lab-validation-log.md`.
+CDI import walkthrough) live in the reference lab's own doc set, outside this repo.
 
 | Artifact | What to keep |
 |---|---|

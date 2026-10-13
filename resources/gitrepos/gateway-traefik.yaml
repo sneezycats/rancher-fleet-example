@@ -19,7 +19,8 @@ spec:
   paths:
   - gateway-traefik
   targets:
-  - name: <REPLACE_ME_CLUSTER>
-    clusterSelector:
-      matchLabels:
-        management.cattle.io/cluster-display-name: <REPLACE_ME_CLUSTER>
+  # clusterName pins by the fleet Cluster object's NAME — human-readable,
+  # and it survives a same-name rebuild (a c-m-... id label regenerates per
+  # rebuild and strands the repo silently at 0/0; see longhorn.yaml and
+  # docs/gitrepo-fleet-clustertemplate.md).
+  - clusterName: <REPLACE_ME_CLUSTER>

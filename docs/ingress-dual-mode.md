@@ -7,8 +7,7 @@ flag-day swap.
 
 *Provenance: validated on a fresh dual-controller cluster build (Rancher
 2.14-era + RKE2 1.33 line) — both controllers confirmed serving; the
-checks below are from that round. Dated run record:
-`docs/lab-validation-log.md`.*
+checks below are from that round.*
 
 ## The knob
 

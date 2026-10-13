@@ -5,9 +5,8 @@ reviewed, verified, and byte-for-byte identical to what was tested. No UI
 clicks, no imperative tooling, no drift: git is the control plane, and
 promotion is a pull request.
 
-*(2.14-era Rancher/Fleet mechanics, validated — dated run records in
-`docs/lab-validation-log.md`. Field names move between versions; validate
-against yours.)*
+*(2.14-era Rancher/Fleet mechanics, validated. Field names move between
+versions; validate against yours.)*
 
 ## The ladder
 
@@ -97,12 +96,10 @@ the moment something merges there, it is expected to ride the train.
 |---|---|
 | Git | Branch protection: PR-only merges + required review on `staging` and `production` (GitHub or your on-prem equivalent). |
 | Rancher | RBAC on the environment GitRepo CRs — who may repoint an environment's branch or edit its CRs. |
-| Convention | Release-only upper branches; clickops changes synced back into the chart values; image work batched and exercised on the lowest environment first. |
+| Convention | Release-only upper branches; UI changes synced back into the chart values; image work batched and exercised on the lowest environment first. |
 | Evidence | The verification round is the promotion artifact: a promotion PR cites the lower environment's `verify.sh` result. No evidence, no promotion. |
 
 ## What was validated
-
-(Dated run records: `docs/lab-validation-log.md`.)
 
 - **Branch pinning** — two GitRepos, same repo+path, different branches →
   distinct bundles, zero collision (the mechanism the model rests on).

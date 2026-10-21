@@ -32,10 +32,12 @@ Watch it:
 
 UI: cluster → Registration tab → per-role tabs (exact commands).
 
-CLI (verified on 2.14.3):
+CLI (verified live on 2.14.3) — group-qualified only. The bare plural resolves
+to an always-empty `fleet.cattle.io` copy, and the namespace is the cluster's
+`c-m-…` ID, not `fleet-default`:
 
-    kubectl -n fleet-default get clusterregistrationtoken <name> \
-      -o jsonpath='{.status.nodeCommand}'
+    kubectl --kubeconfig <mgmt-kc> get clusterregistrationtokens.management.cattle.io \
+      -n <cluster-id-namespace> -o jsonpath='{.items[*].status.nodeCommand}'
 
 ## 3. Register the nodes, role per role
 

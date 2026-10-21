@@ -14,7 +14,7 @@ metadata:
   name: <REPLACE_ME_CLUSTER>-gateway-traefik
   namespace: fleet-default
 spec:
-  repo: <REPLACE_ME_GIT_URL>
+  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
   branch: <REPLACE_ME_BRANCH>
   paths:
   - gateway-traefik

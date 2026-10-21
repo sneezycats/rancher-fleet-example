@@ -58,11 +58,18 @@ topology-free:
 
 The registration command comes from the cluster itself. UI: Cluster →
 Registration tab (per-role tabs, exact commands) — this is the authoritative
-path in 2.14. There is NO kubectl path: registration tokens are v3 norman
-resources, not CRDs (verified: no `clusterregistrationtoken` objects
-anywhere in the API, and the `/v3/clusterRegistrationTokens` collection
-returns empty for a kubeconfig credential — a real Rancher API key is needed
-for CLI retrieval; unverified). The command form is:
+path in 2.14. A CLI path DOES exist (verified live on 2.14.3), but only
+group-qualified: the `clusterregistrationtokens` CRD is registered TWICE —
+the bare plural resolves to a `fleet.cattle.io` copy that is always empty,
+which is what makes naive lookups report nothing. The real tokens live under
+`management.cattle.io/v3`, namespaced by the cluster's `c-m-…` ID:
+
+```
+kubectl get clusterregistrationtokens.management.cattle.io -A
+# the per-role command is in .status.nodeCommand
+```
+
+The command form is:
 
 ```
 curl -fL https://<rancher>/system-agent/install.sh -o system-agent-install.sh &&
@@ -117,8 +124,8 @@ extra disks for Longhorn before registration if the defaults don't suit.
 |---|---|
 | CR schema vs live Rancher 2.14.3 API | server-side dry-run + real create — proven |
 | Custom cluster provisioned via Fleet template | **proven** — the chart rendered through Fleet and the Cluster CR was created on live 2.14.3 with the correct custom-cluster lifecycle: no machines, waiting for registration |
-| Registration command retrieval | **UI is the standard path** (Registration tab). CLI retrieval needs a real Rancher API key (v3 collection) — unverified; NOT a kubectl path |
-| Node join via registration command | pending — a proxy cluster stands ready for a VM standing in for metal (the flow is metal-agnostic; same system-agent). PXE/hardware specifics are out of scope by design |
+| Registration command retrieval | **UI is the standard path** (Registration tab). CLI works via the group-qualified v3 CRD (see Prerequisites) — verified live on 2.14.3 |
+| Node join via registration command | pending on real metal — the flow is metal-agnostic (same system-agent), so a VM stand-in exercises it. PXE/hardware specifics are out of scope by design |
 | Component layer (Longhorn) on a custom cluster | same GitRepo mechanics as any cluster; the `managed-by=fleet` label pitfall applies identically |
 
 ## Checklist for updating a derived copy

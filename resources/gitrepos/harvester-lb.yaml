@@ -14,7 +14,7 @@ metadata:
   name: <REPLACE_ME_CLUSTER>-harvester-lb
   namespace: fleet-default
 spec:
-  repo: "<REPLACE_ME_REPO_URL>"
+  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
   branch: main
   paths:
   - harvester-lb

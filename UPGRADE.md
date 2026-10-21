@@ -183,6 +183,12 @@ takeOwnership safeguards make re-renders converge in either direction.
 
 ## The optional lhcc-rbac bundle (Longhorn CAPI controller identity)
 
+**Stands alone — nothing deploys it unless you wire it.** To exclude it from a
+derived copy: delete `fleet/bundles/lhcc-rbac/`, this section, the `lhcc-rbac/`
+line in the README tree, the closing sentence of the README *Longhorn bundle*
+paragraph, and the commented `# - fleet/bundles/lhcc-rbac` path in
+`resources/gitrepos/longhorn.yaml`. Nothing else in the repo references it.
+
 `fleet/bundles/lhcc-rbac/` ships the **guest-cluster identity** for the
 optional longhorn-capi-controller (lhcc). What it deploys INTO a cluster:
 the `lhcc-eviction-agent` ServiceAccount (kube-system), its never-expiring

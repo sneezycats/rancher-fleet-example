@@ -252,14 +252,15 @@ boot, disk mounted).
 
 ## 3. Bake the image
 
-> **Reference implementation:** `bake-v4g.sh` (SL Micro 6.2), plus `bake-v4g-660.sh` (6.0)
-> and `bake-v4g-661.sh` (6.1) — all in `~/slmicro-build/` on the build host. The steps
-> below are exactly what those scripts do, in order: run the script, or follow along —
-> then verify (§4).
+> **Reference implementation:** the bake script is numbered per golden-image
+> generation (`bake-v<N>.sh`, with a per-SL-Micro-release variant suffix). Keep the
+> generation that produced your tested image under version control next to this guide —
+> the guide is only reproducible if that script is retrievable. The steps below are
+> exactly what the script does, in order: follow along, then verify (§4).
 
 ```bash
 # 1. Work on a COPY — never the pristine source image.
-cd ~/slmicro-build
+cd ~/slmicro-build   # any working dir that holds the source image
 SRC=SL-Micro.x86_64-6.2-Default-qcow-GM.qcow2     # 6.0: …-GM2.qcow2; 6.1: …-GM.qcow2 (§8)
 OUT=slmicro-6.2-longhorn-v4g.qcow2                # naming: slmicro-<version>-longhorn-<generation>
 rm -f "$OUT"; cp --reflink=auto "$SRC" "$OUT"
@@ -300,7 +301,7 @@ sudo -E virt-customize -a "$OUT" --no-selinux-relabel \
 #    NOTE: everything here lives under /etc/systemd/system — the unit files, wants
 #    symlinks, and masks must be transaction-time resolvable. /usr/local/lib/systemd
 #    is mounted too late for systemd's boot-transaction resolution and units there
-#    are silently dropped (verified: v3d units "enabled" yet never queued at boot).
+#    are silently dropped (verified: units "enabled" there were never queued at boot).
 sudo -E guestfish -a "$OUT" -i <<'EOF'
 mkdir-p /etc/systemd/system/basic.target.wants
 ln-sf /etc/systemd/system/slmicro-longhorn-setup.service \
@@ -365,8 +366,8 @@ suppression.
 
 ## 3.1 Bake version history (what changed per golden image)
 
-The reference lab keeps a dated per-version history (v3d → v4g, with the
-exact byte sizes that prove a re-tag). The lessons that
+Keep a dated per-version history of golden images (with the exact byte sizes that
+prove a re-tag — re-tagged files otherwise look identical). The lessons that
 shaped the recipe:
 
 - **`/usr/local/lib/systemd` trap:** units there are "enabled" yet never
@@ -471,8 +472,7 @@ If your Longhorn nodes store replicas on the **OS volume** instead of a dedicate
 "single-disk" pattern), no custom image is needed at all: Longhorn's default disk path is
 `/var/lib/longhorn` on the root filesystem, and stock SL Micro images work as-is. The dedicated-disk
 pattern above remains valuable when you want replica data isolated from OS churn, larger per-node
-storage than the boot disk, or the detach/reattach preservation pattern. Both patterns are
-validated with [longhorn-capi-controller](https://github.com/sneezycats/longhorn-capi-controller).
+storage than the boot disk, or the detach/reattach preservation pattern.
 
 ---
 

@@ -2,10 +2,11 @@
 #
 # Applies the least-privilege workload identity INSIDE each labeled guest
 # cluster: ServiceAccount lhcc-eviction-agent + never-expiring token Secret +
-# ClusterRole + binding. A cluster that gets Longhorn should ALSO get this
-# bundle (same GitRepo path list / clusterSelector), or the
-# longhorn-capi-controller on the management side has no credential to reach
-# it and Longhorn coverage silently goes dark.
+# ClusterRole + binding. Only needed if you RUN the controller — plain
+# Longhorn needs none of it (exclusion recipe: UPGRADE.md). If you do run it,
+# a cluster that gets Longhorn should ALSO get this bundle (same GitRepo path
+# list / clusterSelector), or the longhorn-capi-controller on the management
+# side has no credential to reach it and Longhorn coverage silently goes dark.
 #
 # VENDORED MODE: the chart IS the content (4 static resources, no upstream
 # chart — unlike longhorn, there is nothing to pull). The version pin lives in

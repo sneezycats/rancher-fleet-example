@@ -6,7 +6,7 @@ formats and mounts a dedicated Longhorn data disk at `/var/lib/longhorn` — so 
 from the image (including replacement nodes during upgrades) has Longhorn storage ready without
 per-node manual steps.
 
-**Tested with:** SL Micro 6.0, 6.1 and 6.2 x86_64 on Harvester 1.8.x with RKE2 guest clusters
+**Tested with:** SL Micro 6.0, 6.1 and 6.2 x86_64 on Harvester 1.7.1 and 1.8.1 with RKE2 guest clusters
 (the image-build procedure is identical across all three).
 **Toolchain:** `libguestfs` (virt-customize/guestfish) on any Linux build host.
 **Companion doc:** `image-bake.md` (same directory) — the change-set vs upstream; this

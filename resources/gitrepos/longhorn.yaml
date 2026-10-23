@@ -11,11 +11,13 @@
 #
 # ROUTING needs BOTH halves:
 #   1. spec.targets below (clusterSelector), AND
-#   2. the label ON the target FLEET cluster object (not the provisioning
-#      Cluster CR):
-#        kubectl -n fleet-default label clusters.fleet.cattle.io <cluster> managed-by=fleet
-#      Miss #2 and the bundle sits at "0/0 targets" with no bundledeployment
-#      - nothing deploys and nothing errors.
+#   2. a MATCHING LABEL ON the target FLEET cluster object (not the
+#      provisioning Cluster CR). Select the AUTO-POPULATED
+#      management.cattle.io/cluster-name label - read the real values with:
+#        kubectl get clusters.fleet.cattle.io -n fleet-default \
+#          -L management.cattle.io/cluster-name
+#      Miss the match and the bundle sits at "0/0 targets" with no
+#      bundledeployment - nothing deploys and nothing errors.
 #
 #   WHICH OBJECT CARRIES THE LABELS - `clusters.fleet.cattle.io` in the
 #   workspace namespace. Do NOT mistake lookalikes:
@@ -28,22 +30,21 @@
 #     management.cattle.io/cluster-name (the c-m-... id),
 #     management.cattle.io/cluster-display-name,
 #     app.kubernetes.io/managed-by=Helm, objectset.rio.cattle.io/hash.
-#   `managed-by=fleet` is NOT auto-populated - it exists only where the
-#   operator put it, so this selector targets EXACTLY the labeled set (zero
-#   labels = 0/0; labeling the mgmt cluster would target it too). Node/VM
-#   labels play no part in Fleet targeting. Custom labels stick on the
-#   object, but a rebuilt cluster (new name) needs relabeling.
+#   Hand-rolled labels (e.g. managed-by=fleet) exist ONLY where the
+#   operator adds them - miss the labeling step and the selector silently
+#   matches nothing (0/0). Prefer the auto-populated labels. Node/VM
+#   labels play no part in Fleet targeting.
 #
-#   ONE REPO = ONE CLUSTER? Prefer NAME targets over labels:
+#   ONE REPO = ONE CLUSTER? A NAME target is the zero-knowledge pin:
 #     targets:
 #     - clusterName: <cluster-name>     # the fleet Cluster object's NAME
-#   (for Rancher-provisioned clusters that IS the cluster name, e.g.
-#   <cluster-name>; imported clusters get their id as the name). No labeling step,
-#   human-readable in review, and it survives a rebuild that keeps the
-#   cluster name. Do NOT select on management.cattle.io/cluster-name: it is
-#   the opaque generated c-m-... id - you cannot know it until after first
-#   build, and a same-name rebuild generates a NEW id (the name survives, the
-#   id does not). Reserve label selectors for repos shared across many
+#   (for Rancher-provisioned clusters that IS the cluster name; imported
+#   clusters get their id as the name). Human-readable in review, and it
+#   survives a rebuild that keeps the cluster name. The id LABEL selector
+#   below is equally valid but pins the generated c-m-... id: knowable
+#   only after first build, and it REGENERATES on delete+recreate (the
+#   name survives, the id does not) - update the selector after a
+#   rebuild. Label selectors also scale to repos shared across many
 #   clusters (env tiers etc.).
 # Watch progress on the MGMT cluster: the bundledeployment appears in the
 # target's envelope namespace (cluster-fleet-default-<cluster>-<hash>); the
@@ -68,6 +69,9 @@ spec:
   # - fleet/bundles/lhcc-rbac
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
   targets:
+  # management.cattle.io/cluster-name is AUTO-POPULATED by Fleet on
+  # every cluster object - read the real value with the kubectl
+  # command in the ROUTING notes above.
   - clusterSelector:
       matchLabels:
-        managed-by: fleet
+        management.cattle.io/cluster-name: <c-m-clusterid>

@@ -65,7 +65,9 @@ Identical to every other cluster — the component GitRepos (Longhorn etc.)
 target it by name. Longhorn needs worker-role (untainted) nodes; a CP-only
 cluster skips the Longhorn GitRepo entirely. Pitfall (applies to custom
 clusters exactly like provisioned ones): the target `clusters.fleet.cattle.io`
-object needs the `managed-by=fleet` label or the bundle shows 0/0 targets.
+object must carry a label matching the GitRepo selector — select the
+auto-populated `management.cattle.io/cluster-name` label (hand-rolled
+labels need a manual labeling step) or the bundle shows 0/0 targets.
 
 ## 6. Remove the cluster
 

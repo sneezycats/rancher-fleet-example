@@ -37,9 +37,10 @@ spec:
   correctDrift:
     enabled: true
   # IDENTITY note for component GitRepos (e.g. the longhorn.yaml sibling):
-  # pin them with targets: [{clusterName: <cluster-name>}] - the Fleet
-  # Cluster object is NAMED after the provisioning cluster and returns
-  # identically after a same-name rebuild. NEVER pin the management id
-  # (management.cattle.io/cluster-name, c-m-...): it REGENERATES on every
-  # rebuild, leaving the component repo silently at 0/0 on a dead id.
+  # prefer targets: [{clusterName: <cluster-name>}] - the Fleet Cluster
+  # object is NAMED after the provisioning cluster and returns identically
+  # after a same-name rebuild. An id LABEL selector
+  # (management.cattle.io/cluster-name, c-m-...) works too - the label is
+  # auto-populated - but the id REGENERATES on delete+recreate, leaving
+  # the component repo silently at 0/0 until the selector is updated.
   # targets omitted: a cluster-template bundle deploys itself on install

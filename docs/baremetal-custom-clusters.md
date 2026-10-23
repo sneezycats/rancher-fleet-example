@@ -126,7 +126,7 @@ extra disks for Longhorn before registration if the defaults don't suit.
 | Custom cluster provisioned via Fleet template | **proven** — the chart rendered through Fleet and the Cluster CR was created on live 2.14.3 with the correct custom-cluster lifecycle: no machines, waiting for registration |
 | Registration command retrieval | **UI is the standard path** (Registration tab). CLI works via the group-qualified v3 CRD (see Prerequisites) — verified live on 2.14.3 |
 | Node join via registration command | pending on real metal — the flow is metal-agnostic (same system-agent), so a VM stand-in exercises it. PXE/hardware specifics are out of scope by design |
-| Component layer (Longhorn) on a custom cluster | same GitRepo mechanics as any cluster; the `managed-by=fleet` label pitfall applies identically |
+| Component layer (Longhorn) on a custom cluster | same GitRepo mechanics as any cluster; the 0/0-targets selector pitfall applies identically — select the auto-populated `management.cattle.io/cluster-name` label |
 
 ## Checklist for updating a derived copy
 

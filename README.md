@@ -72,9 +72,11 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    at the workload cluster — see `gateway-traefik/README.md` for the full
    chain (LB VIP -> hostPorts -> Traefik entrypoints -> Gateway ->
    HTTPRoute) and its pitfalls.
-7. **Label the cluster** once it is Ready:
-   `kubectl label clusters.fleet.cattle.io -n fleet-default <cluster> managed-by=fleet`
-   → Longhorn deploys from its bundle.
+7. **Target the cluster** once it is Ready: set the Longhorn GitRepo's
+   selector to the auto-populated `management.cattle.io/cluster-name:
+   <c-m-clusterid>` (the CLUSTER-NAME column of `kubectl get
+   clusters.fleet.cattle.io -n fleet-default`) → Longhorn deploys from
+   its bundle.
 8. **Data layer + verification**: apply the data layer against the new
    cluster's kubeconfig (`kubectl apply -f scripts/01-pvcs.yaml -f
    scripts/02-data-deployments.yaml`), then capture a baseline with

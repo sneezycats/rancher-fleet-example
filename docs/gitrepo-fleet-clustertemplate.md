@@ -28,7 +28,7 @@ spec:
   targets:                      # component bundles only:
   - clusterSelector:            # deploy when the cluster label matches
       matchLabels:
-        managed-by: fleet
+        management.cattle.io/cluster-name: <c-m-clusterid>  # auto-populated
 ```
 
 ## Workspace: where the GitRepo lives decides what it can reach
@@ -128,8 +128,9 @@ values, quoting belongs only in YAML files where the parser strips it.
    - `helm list -A` — release with a revision >= 1, status deployed
    - `kubectl get clusters.provisioning.cattle.io -n fleet-default` — rendered
      Cluster CR (templates)
-4. Components: label the target — `kubectl label clusters.fleet.cattle.io -n
-   fleet-default <cluster> managed-by=fleet`.
+4. Components: point the selector at the target's auto-populated id label —
+   `kubectl get clusters.fleet.cattle.io -n fleet-default -L
+   management.cattle.io/cluster-name` gives the `c-m-...` value.
 
 ## Behaviors that will bite you (learned the hard way)
 

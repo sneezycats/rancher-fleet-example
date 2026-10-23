@@ -4,6 +4,10 @@ Gateway API wiring for clusters that use RKE2's packaged Traefik. The
 mechanics below were validated on RKE2 v1.33.x with the rke2-traefik
 chart 40.1.003.
 
+**New to Gateway API?** Read `gateway-api-primer.md` first — the four
+objects every implementation speaks, one line each. Everything below is
+the Traefik-on-RKE2 wiring and its pitfalls.
+
 ## Why this exists (the moving parts, named)
 
 ingress-nginx is one object type (Ingress) pointed at one controller.

@@ -61,7 +61,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    host + branch strategy) and apply against your Rancher's kubeconfig.
 4. **Private git? Create the Fleet client secret and reference it.**
    `docs/git-credentials.md` has the GitLab Omnibus recipe (project deploy
-   token + basic-auth secret per workspace). The cluster pulls; the repo
+   token + HTTP Basic Auth secret per workspace). The cluster pulls; the repo
    never carries a credential.
 5. **Deploy**: either let Fleet install the template bundle from the GitRepo,
    or bypass for the first build:

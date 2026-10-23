@@ -8,13 +8,13 @@ metadata:
   name: "<REPLACE_ME>-cluster-templates"
   namespace: fleet-local
 spec:
+  # PRIVATE REPO: uncomment and create the HTTP Basic Auth secret first —
+  # see docs/git-credentials.md. The examples assume anon http clones of public
+  # repos, so this is commented out here.
+  # Secret must exist in the same namespace as the GitRepo CR
+  # clientSecretName: <REPLACE_ME-git-auth>
   branch: "<REPLACE_ME_BRANCH>"
   paths:
   - cluster-templates-custom/chart
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
-  # PRIVATE REPO: uncomment and create the client secret first —
-  # see docs/git-credentials.md. The examples assume anon http clones of public
-  # repos, so this is commented out here.
-  # Secret must exist in the same namespace as the GitRepo CR
-  # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret
   # targets omitted: a cluster-template bundle deploys itself on install

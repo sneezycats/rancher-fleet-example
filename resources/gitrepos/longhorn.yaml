@@ -54,6 +54,11 @@ metadata:
   name: "<REPLACE_ME>-longhorn"
   namespace: fleet-default
 spec:
+  # PRIVATE REPO: uncomment and create the HTTP Basic Auth secret first —
+  # see docs/git-credentials.md. The examples assume anon http clones of public
+  # repos, so this is commented out here.
+  # Secret must exist in the same namespace as the GitRepo CR
+  # clientSecretName: <REPLACE_ME-git-auth>
   branch: "<REPLACE_ME_BRANCH>"
   paths:
   - fleet/bundles/longhorn
@@ -61,11 +66,6 @@ spec:
   # (inert without the controller). See UPGRADE.md, "The optional lhcc-rbac
   # bundle", before uncommenting.
   # - fleet/bundles/lhcc-rbac
-  # PRIVATE REPO: uncomment and create the client secret first -
-  # see docs/git-credentials.md. The examples assume anon http clones of public
-  # repos, so this is commented out here.
-  # Secret must exist in the same namespace as the GitRepo CR
-  # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret
   repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
   targets:
   - clusterSelector:

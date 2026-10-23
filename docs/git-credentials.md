@@ -56,7 +56,7 @@ spec:
    scope **read_repository** only.
 2. Note the username (`gitlab+deploy-token-N`) and the token — GitLab shows
    the token **once**.
-3. Create the basic-auth secret per workspace (above) and set
+3. Create the HTTP Basic Auth secret per workspace (above) and set
    `clientSecretName` on the GitRepo.
 
 | GitRepo | Namespace | Secret needed |

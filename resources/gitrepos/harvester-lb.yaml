@@ -18,6 +18,11 @@ spec:
   branch: main
   paths:
   - harvester-lb
+  # PRIVATE REPO: uncomment and create the client secret first —
+  # see docs/git-credentials.md. The examples assume anon http clones of public
+  # repos, so this is commented out here.
+  # Secret must exist in the same namespace as the GitRepo CR
+  # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret
   targets:
   - name: <REPLACE_ME_HARVESTER_CLUSTER>
     clusterSelector:

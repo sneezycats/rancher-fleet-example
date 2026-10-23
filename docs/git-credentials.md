@@ -86,8 +86,9 @@ directly.
 
 ## When to set `clientSecretName`
 
-The example GitRepo files in this repo carry **no** `clientSecretName` —
-they assume public repos over plain http. For a private repo, uncomment
+The example GitRepo files in this repo carry a **commented-out**
+`clientSecretName` — they assume public repos over plain http so the same
+YAML works unchanged in a lab. For a private repo, uncomment
 `clientSecretName` and create the per-workspace secret first. If a
 GitRepo points at a private repo without its secret, Fleet reports
 authentication errors in the GitRepo status (check `status.displayError`).

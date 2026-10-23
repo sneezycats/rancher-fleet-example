@@ -15,5 +15,6 @@ spec:
   # PRIVATE REPO: uncomment and create the client secret first —
   # see docs/git-credentials.md. The examples assume anon http clones of public
   # repos, so this is commented out here.
-  # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret, SAME namespace as this GitRepo
+  # Secret must exist in the same namespace as the GitRepo CR
+  # clientSecretName: <REPLACE_ME-git-auth>  # basic-auth secret
   # targets omitted: a cluster-template bundle deploys itself on install

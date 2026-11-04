@@ -18,7 +18,7 @@
 apiVersion: fleet.cattle.io/v1alpha1
 kind: GitRepo
 metadata:
-  name: "<REPLACE_ME>-cluster-templates"
+  name: <REPLACE_ME>-cluster-templates
   namespace: fleet-local
 spec:
   # PRIVATE REPO: uncomment and create the HTTP Basic Auth secret first —
@@ -26,10 +26,10 @@ spec:
   # repos, so this is commented out here.
   # Secret must exist in the same namespace as the GitRepo CR
   # clientSecretName: <REPLACE_ME-git-auth>
-  branch: "<REPLACE_ME_BRANCH>"
+  branch: <REPLACE_ME_BRANCH>
   paths:
   - cluster-templates/chart
-  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  repo: https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git
   # SELF-HEAL (validated live on 2.14.3): with correctDrift enabled the
   # template repo re-creates a deleted Cluster CR in seconds - the repo truly
   # owns the cluster. WITHOUT it, a deleted cluster stays deleted (the GitRepo

@@ -46,7 +46,7 @@ Then reference it:
 ```yaml
 spec:
   repo: https://gitlab.internal.example/<group>/<project>.git
-  branch: main
+  branch: "<REPLACE_ME_BRANCH>"
   clientSecretName: <repo>-git-auth
 ```
 

@@ -19,8 +19,8 @@ spec:
   # repos, so this is commented out here.
   # Secret must exist in the same namespace as the GitRepo CR
   # clientSecretName: <REPLACE_ME-git-auth>
-  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
-  branch: "<REPLACE_ME_BRANCH>"
+  repo: https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git
+  branch: <REPLACE_ME_BRANCH>
   paths:
   - harvester-lb
   targets:

@@ -52,7 +52,7 @@
 apiVersion: fleet.cattle.io/v1alpha1
 kind: GitRepo
 metadata:
-  name: "<REPLACE_ME>-longhorn"
+  name: <REPLACE_ME>-longhorn
   namespace: fleet-default
 spec:
   # PRIVATE REPO: uncomment and create the HTTP Basic Auth secret first —
@@ -60,14 +60,14 @@ spec:
   # repos, so this is commented out here.
   # Secret must exist in the same namespace as the GitRepo CR
   # clientSecretName: <REPLACE_ME-git-auth>
-  branch: "<REPLACE_ME_BRANCH>"
+  branch: <REPLACE_ME_BRANCH>
   paths:
   - fleet/bundles/longhorn
   # OPTIONAL: also ship the guest identity for the longhorn-capi-controller
   # (inert without the controller). See UPGRADE.md, "The optional lhcc-rbac
   # bundle", before uncommenting.
   # - fleet/bundles/lhcc-rbac
-  repo: "https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git"
+  repo: https://<REPLACE_ME_GIT_HOST>/<org>/<repo>.git
   targets:
   # management.cattle.io/cluster-name is AUTO-POPULATED by Fleet on
   # every cluster object - read the real value with the kubectl

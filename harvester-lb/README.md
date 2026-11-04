@@ -19,6 +19,9 @@ reach the VIP directly; nothing about the Harvester-side plumbing changes.
 ## Files
 
 - `ippool.yaml`      — static IP pool for LB VIPs (keep OUT of the DHCP range)
+  — ships FULLY COMMENTED (one-time resource; Fleet reads every bundle
+  file, so a live placeholder manifest breaks every sync). Uncomment,
+  fill in, use once.
 - `loadbalancer.yaml`— one LB per workload cluster; backends selected by the
   labels the Harvester node driver stamps automatically
 - `fleet.yaml`       — raw-YAML bundle marker (see warning inside)

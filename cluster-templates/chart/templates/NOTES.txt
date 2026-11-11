@@ -9,6 +9,12 @@ Rendered into namespace fleet-default:
 {{- end }}
 {{- $skew := 0 }}
 {{- range .Values.nodepools }}{{ if and .imageName (ne .imageName $shared) }}{{ $skew = add1 $skew }}{{ end }}{{ end }}
+{{- if .Values.upgradeStrategy }}
+
+Version-upgrade ordering: controlPlane={{ .Values.upgradeStrategy.controlPlaneConcurrency | default "(rancher default)" }}/worker={{ .Values.upgradeStrategy.workerConcurrency | default "(rancher default)" }} (one at a time per role means
+two nodes in flight on a 3+3 cluster). This governs Kubernetes version upgrades
+only; image hops are ordered by each pool's MachineDeployment.
+{{- end }}
 {{- if gt $skew 0 }}
 
 IMAGE SKEW is in effect: {{ $skew }} pool(s) pin an image other than the

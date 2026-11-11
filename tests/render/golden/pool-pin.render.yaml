@@ -45,6 +45,9 @@ spec:
         machineConfigRef:
           kind: HarvesterConfig
           name: render-check-workers
+    upgradeStrategy:
+      controlPlaneConcurrency: "1"
+      workerConcurrency: "1"
 
 ---
 # Source: rke2-harvester-example/templates/nodeconfig-harvester.yaml

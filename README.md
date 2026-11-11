@@ -121,6 +121,9 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
   from the lower env; hotfixes flow down and up through PRs, never sideways.
 - What the UI changes, the repo must reflect (sync values back, commit).
 - Batch any golden-image work; test on one cluster before rolling wider.
+- Version-upgrade order is declared, not inherited: the chart ships
+  `upgradeStrategy` (one node at a time per role). It does not order image hops —
+  each pool's MachineDeployment does (`UPGRADE.md`).
 - An image hop is scoped per pool, so it is **one pool per commit**: workers
   and control plane are separate rounds, each with its own verification pair
   (`UPGRADE.md` § Per-pool image hops).

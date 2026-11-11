@@ -107,6 +107,14 @@ PYGEN
   rm -f "${out}.raw"
 }
 
+# Base shape with the version-ordering block removed (the pre-feature shape).
+# NOTE: null, not {} - Helm MERGES an empty map over the chart default, so {}
+# would render the shipped block and the check would compare two identical
+# documents and pass vacuously. null is Helm's documented way to unset a default.
+strategy_fixture() {
+  { cat "${values}/base.yaml"; echo "upgradeStrategy: null"; } > "$1"
+}
+
 # The advancing pool is whatever the chart lists first, not a hardcoded name.
 first_pool=$(awk '/^nodepools:/{g=1;next} g && /^  - name: /{sub(/^  - name: /,"");print;exit}' "${chart}/values.yaml")
 [[ -n "${first_pool}" ]] || die "could not read the first pool name from ${chart}/values.yaml"
@@ -117,6 +125,8 @@ if [[ "${1:-}" == "--update" ]]; then
   render "${values}/base.yaml" > "${golden}/base.render.yaml"
   derive_fixture "${tmp}/pin-a.yaml" 0 "${pin_a}"
   render "${tmp}/pin-a.yaml" > "${golden}/pool-pin.render.yaml"
+  strategy_fixture "${tmp}/no-strategy.yaml"
+  render "${tmp}/no-strategy.yaml" > "${golden}/no-strategy.render.yaml"
   echo "goldens re-pinned (review the diff before committing):"
   ( cd "${here}/../.." && git diff --stat -- tests/render/golden || true )
   exit 0
@@ -199,6 +209,55 @@ assert len(moved) == 1, \
 assert moved[0] == os.environ["FIRST_POOL"], \
     f"expected {os.environ['FIRST_POOL']} to move, got {moved[0]}"
 print(f"PASS  one pool's pin moves {moved[0]} only; untouched: {', '.join(sorted(held))}")
+PY
+
+# 4. version-ordering policy must never reach machine config. upgradeStrategy
+#    governs Kubernetes version upgrades, not image hops; if it ever leaked into
+#    a pool's machine config it would silently roll every pool it targeted.
+[[ -f "${golden}/no-strategy.render.yaml" ]] || die "missing golden/no-strategy.render.yaml; run --update"
+strategy_fixture "${tmp}/no-strategy.yaml"
+render "${tmp}/no-strategy.yaml" > "${tmp}/no-strategy.render.yaml"
+if ! diff -u "${golden}/no-strategy.render.yaml" "${tmp}/no-strategy.render.yaml" > "${tmp}/nostream.diff"; then
+  echo "FAIL: the omitted-strategy render drifted from its golden:" >&2
+  cat "${tmp}/nostream.diff" >&2
+  exit 1
+fi
+
+python3 - "${tmp}/base.render.yaml" "${tmp}/no-strategy.render.yaml" <<'PY'
+import re, sys
+
+def docs(path):
+    out = {}
+    for chunk in open(path).read().split("\n---\n"):
+        m = re.search(r"^  name: (\S+)$", chunk, re.M)
+        if m:
+            out[m.group(1)] = chunk.rstrip() + "\n"
+    return out
+
+with_s, without = docs(sys.argv[1]), docs(sys.argv[2])
+assert with_s.keys() == without.keys(), f"object set changed: {set(with_s) ^ set(without)}"
+
+# every machine-config document must be untouched, byte for byte
+config_docs = [n for n in with_s if n != next(n for n in with_s if "apiVersion: provisioning.cattle.io" in with_s[n])]
+for name in config_docs:
+    assert with_s[name] == without[name], \
+        f"{name}: upgradeStrategy changed machine config - that would roll every pool"
+
+# absolute assertion: the policy string must exist ONLY inside the Cluster CR.
+# A two-render diff cannot catch a leak that both renders share, so this does
+# not depend on the fixture at all.
+cluster = next(n for n in with_s if "apiVersion: provisioning.cattle.io" in with_s[n])
+for name, doc in with_s.items():
+    if name != cluster:
+        assert "upgradeStrategy" not in doc, \
+            f"{name}: upgradeStrategy leaked into machine config - it would roll every pool this template targets"
+added = [l for l in with_s[cluster].splitlines() if l not in without[cluster].splitlines()]
+removed = [l for l in without[cluster].splitlines() if l not in with_s[cluster].splitlines()]
+assert not removed, f"{cluster}: defining the strategy also REMOVED lines: {removed}"
+assert added and all("upgradeStrategy" in l or "Concurrency" in l for l in added), \
+    f"{cluster}: delta is not confined to the strategy block: {added}"
+print(f"PASS  upgradeStrategy confined to {cluster} (+{len(added)} policy lines); "
+      f"{len(config_docs)} machine-config documents identical and free of the field")
 PY
 
 echo "OK      render gate clean"

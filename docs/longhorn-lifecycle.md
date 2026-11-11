@@ -64,19 +64,36 @@ documentation):
   `replica-replenishment-wait-interval`, `replica-soft-anti-affinity`.
 
 Those procedures map onto the two ways a Rancher/CAPI pool changes a machine,
-and only one of them is automatic:
+and which of them happens automatically depends on one setting — the vendor
+`node-drain-policy` — not on the type of change:
 
 | Change | Node comes back? | Documented procedure | Who performs it |
 | --- | --- | --- | --- |
 | OS/runtime maintenance, Kubernetes version upgrade | yes | cordon, drain, maintain, uncordon | Rancher/CAPI does this |
-| Machine replacement (image hop, pool resize, crash) | **no** | graceful node removal: evict the data, then destroy | **nobody, unless you ask** |
+| Machine replacement (image hop, pool resize, crash) | **no** | graceful node removal: evict the data, then destroy | **nobody under the shipped drain policy**; the vendor itself during the drain if the policy is set to a `block-for-eviction` variant for the window (step 1b); or you, per node (step 1c) |
 
-That last row is the reason the eviction step exists in this repo. A
-`drainBeforeDelete` drain moves *pods*; it is written for a node that returns,
-so it never asks Longhorn to migrate replicas. When the machine is being
-replaced, the data handshake has to be requested explicitly —
-`scripts/lh-graceful-remove.sh` performs it and blocks until the node holds no
-replicas, which is the documented completion criterion.
+The drain and the storage layer are **not** independent: the drain is already
+coordinated with Longhorn through `node-drain-policy`, and the shipped default
+`block-if-contains-last-replica` is a real brake — Longhorn refuses to let a
+drain complete while that node holds a volume's last live replica. What it does
+*not* do is evict. On a healthy 3-replica volume no node holds "the last live
+replica", so the condition never fires and the drain proceeds and the replica
+dies with the machine. That is the policy working as specified, not a hole.
+
+Two of the five documented policies close it, and they are the ones a
+replacement-style roll wants: `block-for-eviction-if-contains-last-replica` and
+`block-for-eviction`. Per the vendor, each "takes action to automatically evict
+replicas from the node" and blocks drain completion "until eviction is
+complete" — the data moves *before* the machine goes, with no controller and no
+external orchestration. The vendor scopes them to planned maintenance for two
+reasons worth honoring: they "trigger on cordon, not on drain", so a casual
+cordon rebuilds replicas for nothing, and "the drain operation is significantly
+slower... Drain timeout must be adjusted as appropriate for the amount of data
+that will move". Hence step 1b: open the window, roll, close the window. The
+manual handshake is still worth knowing, and `scripts/lh-graceful-remove.sh`
+performs it and blocks until the node holds no replicas — that is the documented
+completion criterion, and it is the only option when the pool is being resized
+down rather than replaced.
 
 **The precondition people trip on: eviction needs a destination.** An evicted
 replica is rebuilt elsewhere *before* its source is removed, so some node must
@@ -100,6 +117,11 @@ writers throughout:
 | --- | --- | --- |
 | Replacement with no eviction requested | `degraded`; one volume ran on a single replica | recovered on its own after the replenishment interval |
 | Documented eviction handshake (soft anti-affinity on) | **`healthy` throughout** | node reached 0 replicas; no single-copy window |
+
+Why the first row behaved that way, checked afterwards rather than guessed: the
+cluster was running `node-drain-policy = block-if-contains-last-replica`, the
+chart default, verified on the live cluster after the roll. With three healthy
+replicas per volume that policy has nothing to protect and stays silent.
 
 Both preserved data. Only the second is predictable, and it is the documented
 one — which is the standard this repo holds itself to.
@@ -148,6 +170,11 @@ volume detaches and re-attaches, replicas rebuild to 3/3), old machine is
 deleted. Expect node Ready ~10 min per hop.
 
 > **You cannot hold the roll from outside.** Setting
+The absence of a pause switch on the deployment object is not the absence of a
+brake. The supported brake is the drain itself: a `block-for-eviction` drain
+policy holds the roll at the drain step until the vendor has relocated the data,
+which is exactly the semantics an automated upgrade pipeline wants (step 1b).
+
 > `spec.paused: true` on the provisioner's `MachineDeployment` is accepted
 > and then reverted: Rancher re-applies its own copy of the machine spec on
 > its next reconcile, and the measured result was the roll continuing

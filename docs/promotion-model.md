@@ -57,7 +57,11 @@ Changes travel as separate, individually verified commits:
 
 - **Cluster changes** (template `values.yaml`: image generation, pools,
   sizes, storage class) → Fleet re-renders the CRs → CAPI rolling-replaces
-  machines — new nodes join before old are deleted.
+  machines — new nodes join before old are deleted. The image axis is
+  per-pool capable (a pool's own `imageName` rolls that pool alone; the
+  top-level one rolls the cluster), so a hop is scoped to one pool per
+  commit — never both pools in one commit even though both lines sit
+  adjacent in `values.yaml`.
 - **Storage changes** (Longhorn bundle: `version:` line or values) → Fleet
   `helm upgrade`s in place — the release is adopted (same release name),
   revision bumps, a manager restarts; the data plane stays up.

@@ -3,8 +3,18 @@ Cluster template installed as Helm release {{ .Release.Name }}.
 Rendered into namespace fleet-default:
   - provisioning.cattle.io/v1 Cluster "{{ .Values.name | default .Release.Name }}"
   - rke-machine-config.cattle.io/v1 HarvesterConfig per node pool:
+{{- $shared := .Values.imageName }}
 {{- range .Values.nodepools }}
-      {{ .name }} (x{{ .quantity }})
+      {{ .name }} (x{{ .quantity }}) — image: {{ .imageName | default $shared }}{{ if and .imageName (ne .imageName $shared) }} (pool override; cluster default: {{ $shared }}){{ end }}
+{{- end }}
+{{- $skew := 0 }}
+{{- range .Values.nodepools }}{{ if and .imageName (ne .imageName $shared) }}{{ $skew = add1 $skew }}{{ end }}{{ end }}
+{{- if gt $skew 0 }}
+
+IMAGE SKEW is in effect: {{ $skew }} pool(s) pin an image other than the
+cluster default. Every pool on its own image is on its own patch level, and
+Rancher enforces nothing about that — the skew window is yours to own
+(UPGRADE.md § "Per-pool image hops").
 {{- end }}
 
 Next steps (see the README quickstart):

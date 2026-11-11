@@ -24,7 +24,7 @@ reviewable commit, and promotion is a branch merge.
 **Upgrade flow:** change a value → commit → push → Fleet `helm upgrade` →
 config hash changes → CAPI rolls machines (new nodes join before old are
 deleted) → Longhorn rebuilds replicas onto the new nodes → `verify.sh` proves
-data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them — `UPGRADE.md` has the full taxonomy, the verification chain, and the pitfalls.
+data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them — and the roll is scoped to whatever the edit touched: a pool's own `imageName` rolls that pool, so the control plane can hop OS images independently of the workers; once every pool pins one, the top-level value only moves pools that still inherit it. `UPGRADE.md` has the full taxonomy, the verification chain, and the pitfalls.
 
 ## Repository layout
 
@@ -41,6 +41,7 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
 ├── fleet/bundles/lhcc-rbac/        # OPTIONAL: guest identity for the Longhorn CAPI controller (see UPGRADE.md)
 ├── resources/gitrepos/             # the GitRepo CRs (cluster + bare-metal + longhorn + LB + gateway)
 ├── scripts/                        # data layer + verification (baseline/verify)
+├── tests/render/                   # render gate: proves a chart edit moves no render
 └── docs/                           # this approach, documented
 ```
 
@@ -57,6 +58,9 @@ data continuity. **No UI clicks, no imperative tooling.** Scale changes simply a
    Note: the example chart attaches one root disk per node, so the golden
    image's dedicated-data-disk unit skips safely in this shape — see §7 of
    the bake guide for when a dedicated data disk is (and is not) needed.
+   A pool may pin its own `imageName` (day-2 hops, `UPGRADE.md` § Per-pool
+   image hops): every pinned image must exist too, in that pool's VM
+   namespace.
 3. **Create the GitRepos** (`resources/gitrepos/*.yaml`, adjusted to your git
    host + branch strategy) and apply against your Rancher's kubeconfig.
 4. **Private git? Create the Fleet client secret and reference it.**
@@ -117,12 +121,19 @@ Longhorn CAPI controller — see UPGRADE.md before wiring it.
   from the lower env; hotfixes flow down and up through PRs, never sideways.
 - What the UI changes, the repo must reflect (sync values back, commit).
 - Batch any golden-image work; test on one cluster before rolling wider.
+- An image hop is scoped per pool, so it is **one pool per commit**: workers
+  and control plane are separate rounds, each with its own verification pair
+  (`UPGRADE.md` § Per-pool image hops).
+- A chart edit that changes the render is a cluster roll in disguise: run
+  `tests/render/render-check.sh` before pushing anything under
+  `cluster-templates/chart/`.
 
 ## Docs
 
 - `UPGRADE.md` — the change-day runbook: what each values edit does
-  (scale vs roll), the verification chain, and the field-ownership pitfalls
-  (start here before touching a running cluster).
+  (scale vs roll one pool vs roll the cluster), per-pool image hops for
+  day-2 OS patching, the verification chain, and the field-ownership
+  pitfalls (start here before touching a running cluster).
 - `docs/longhorn-lifecycle.md` — the Longhorn-with-data contract: settings,
   procedure, and verification rounds for cluster lifecycle with volumes
   aboard.

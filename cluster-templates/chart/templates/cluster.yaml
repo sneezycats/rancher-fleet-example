@@ -52,3 +52,18 @@ spec:
           kind: HarvesterConfig
           name: {{ $.Release.Name }}-{{ $pool.name }}
       {{- end }}
+    {{- with .Values.upgradeStrategy }}
+    upgradeStrategy:
+      {{- /* Ordering policy for Kubernetes VERSION upgrades only. It does not
+             govern image hops: an image hop changes the pool's machine config,
+             Rancher re-clones that pool's template, and CAPI rolls that pool by
+             its MachineDeployment strategy - upgradeStrategy never enters that
+             path (measured on 2.14.3: defining the block moved zero machines).
+             Rendered only when values supply it; omitted == Rancher's own
+             defaults. Drain options are deliberately NOT defaulted here:
+             Rancher's normalizer strips false-valued booleans elsewhere in this
+             CR (see the machinePools note above) and an always-rendered
+             `enabled: false` risks permanent Modified churn. Omitted means
+             false, so add the block only when you actually want draining. */}}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}

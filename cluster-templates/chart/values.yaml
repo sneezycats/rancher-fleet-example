@@ -24,6 +24,27 @@ kubernetesVersion: "v1.33.13+rke2r1"
 # if scripting (label -> cc-<id>):
 #   kubectl -n cattle-global-data get secrets -o json \
 #     | python3 cluster-templates/scripts/cc-lookup.py <LABEL>
+# upgradeStrategy orders Kubernetes VERSION upgrades. It has NO effect on OS
+# image hops - those replace machines through the pool's machine template and are
+# governed by the pool's MachineDeployment (UPGRADE.md § Per-pool image hops).
+#
+# Rancher's observed behavior when this is unset is one node at a time per role,
+# which means a control-plane node and a worker node can be in flight at the
+# same time (2 nodes total on a 3+3 cluster). Shipping the value here turns that
+# observation into a fact that is reviewed in git, and keeps the number from
+# changing underneath a cluster because Rancher decided to.
+#
+# Concurrency accepts a count or a percentage string ("1", "10%"). Drain options
+# are intentionally NOT shipped: Rancher persists `enabled: false` itself, and
+# emitting false-valued booleans into this CR has caused permanent "Modified"
+# drift elsewhere (machinePools), so omitted-means-false is the safe shape.
+# If you enable draining, know that it is a different knob from
+# nodepools[].drainBeforeDelete - that one drains on machine REPLACEMENT (image
+# hops, scaling), this one drains on version UPGRADE plans.
+upgradeStrategy:
+  controlPlaneConcurrency: "1"
+  workerConcurrency: "1"
+
 cloudCredentialSecretName: "cattle-global-data:cc-<id>"  # ID from the UI, with namespace
 
 # --- Harvester provider defaults (per-pool overrides possible below) ---

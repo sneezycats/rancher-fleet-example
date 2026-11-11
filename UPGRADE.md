@@ -199,6 +199,52 @@ twin under the new name. To rename for real: build the new cluster from the
 new values, verify it, migrate the data layer, then remove the old one
 deliberately.
 
+## Version upgrade ordering (`upgradeStrategy`)
+
+`upgradeStrategy` orders **Kubernetes version** upgrades. It does **not** govern
+image hops: an image hop changes a pool's machine config, Rancher re-clones that
+pool's machine template, and CAPI rolls that pool through its MachineDeployment.
+`upgradeStrategy` never enters that path — measured on Rancher 2.14.3, patching
+the block onto a live 3-CP/3-worker cluster moved zero machines (no new template,
+no revision bump, identical node names).
+
+The chart ships it explicitly:
+
+```yaml
+upgradeStrategy:
+  controlPlaneConcurrency: "1"
+  workerConcurrency: "1"
+```
+
+Those values encode what Rancher does when the field is absent: one node at a
+time **per role**, so a control-plane node and a worker node are normally in
+flight simultaneously (two nodes total on a 3+3 cluster). Shipping the number
+does not change behaviour; it stops the behaviour from being an observation
+nobody recorded. Concurrency takes a count or a percentage string (`"10%"`) if a
+large pool needs a wider rollout.
+
+**Drain options are deliberately not shipped.** Rancher's own default is
+`enabled: false` for both roles, and emitting false-valued booleans into this CR
+has produced permanent "Modified" churn elsewhere (`machinePools`), because
+Rancher's normalizer strips them — omitted means false, so leaving them out is
+the safe shape. Add `controlPlaneDrainOptions` / `workerDrainOptions` only when
+you actually want draining, and know they are a different knob from
+`nodepools[].drainBeforeDelete`: that one drains on machine **replacement**
+(image hops, scaling), this one drains on **version** plans.
+
+Two consequences of the default, worth deciding about before a version bump:
+
+- With draining off, pods are not evicted before the kubelet restarts. For
+  Longhorn-attached or otherwise stateful workloads, that is a decision, not an
+  accident waiting to happen.
+- On **rollback** to a prior version the strategy is ignored entirely — worker
+  nodes are not cordoned or drained. The emergency path has no drain either.
+
+Per-pool image hops exist so a control plane can be patched while an
+uncooperative worker pool waits. The render gate therefore asserts that
+`upgradeStrategy` stays confined to the Cluster CR: were it ever to reach a
+pool's machine config it would roll every pool that template targets.
+
 ## The pipeline, with expected timings
 
 ```

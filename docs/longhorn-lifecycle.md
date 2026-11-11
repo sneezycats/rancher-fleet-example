@@ -38,6 +38,72 @@ self-clean (see the residue step below).*
    unexpectedly` clears pods that would otherwise wedge machine deletion
    after an unexpected detach.
 
+## The documented standard we operate inside
+
+Longhorn is engineered to keep volume data safe through node maintenance,
+node loss, and replica loss. The premise of this document is that its
+documented procedures are sufficient when executed as written: our job is to
+know them, honor their preconditions, and operate inside them — not to
+supervise the storage layer from outside. Upstream references (Longhorn v1.13
+documentation):
+
+- **Node Maintenance and Kubernetes Upgrade Guide** (`maintenance/`) —
+  cordon → drain → maintain → uncordon, plus the in-place upgrade rules: drain
+  before touching a node, a drain `--timeout` large enough for replica rebuilds
+  to finish between nodes (or `0`), and *"the number of nodes upgrading at a
+  time should be smaller than the number of Longhorn replicas for each
+  volume"*, so a running volume always keeps at least one healthy replica.
+- **Graceful Node Removal** (`nodes-and-volumes/nodes/`) — the handshake for a
+  node that is *not* coming back: disable scheduling **and request eviction**
+  on the Longhorn node, then wait until every disk reports
+  `scheduledReplicas: 0` before the node is destroyed. Its stated reason:
+  Kubernetes does not notify the CSI layer to migrate replicas before a node is
+  destroyed, so removing a node without this step loses whatever replicas were
+  on it.
+- **Settings reference** (`references/settings.md`) — `node-drain-policy`,
+  `replica-replenishment-wait-interval`, `replica-soft-anti-affinity`.
+
+Those procedures map onto the two ways a Rancher/CAPI pool changes a machine,
+and only one of them is automatic:
+
+| Change | Node comes back? | Documented procedure | Who performs it |
+| --- | --- | --- | --- |
+| OS/runtime maintenance, Kubernetes version upgrade | yes | cordon, drain, maintain, uncordon | Rancher/CAPI does this |
+| Machine replacement (image hop, pool resize, crash) | **no** | graceful node removal: evict the data, then destroy | **nobody, unless you ask** |
+
+That last row is the reason the eviction step exists in this repo. A
+`drainBeforeDelete` drain moves *pods*; it is written for a node that returns,
+so it never asks Longhorn to migrate replicas. When the machine is being
+replaced, the data handshake has to be requested explicitly —
+`scripts/lh-graceful-remove.sh` performs it and blocks until the node holds no
+replicas, which is the documented completion criterion.
+
+**The precondition people trip on: eviction needs a destination.** An evicted
+replica is rebuilt elsewhere *before* its source is removed, so some node must
+be allowed to accept a second replica of that volume. With
+`replica-soft-anti-affinity: false` — this repo's Longhorn bundle, where
+replicas of one volume never share a node — and `numberOfReplicas` equal to the
+worker count, every other node already holds a replica and there is nowhere to
+put the copy. Longhorn refuses to do something unsafe rather than doing it: the
+request is accepted, the eviction controller then reports
+`No disk candidates for evicting replica`, and the replica count sits unchanged
+forever. That is the documented troubleshooting case, and it is a capacity
+statement, not a fault. The fix is a shape decision: **size the pool above the
+replica count** (four workers for three replicas is the smallest shape where
+every volume has somewhere to go), or accept temporary co-location by enabling
+`replica-soft-anti-affinity` for the maintenance window and restoring it after.
+
+Measured contrast, same three volumes (3 replicas across 3 workers) with live
+writers throughout:
+
+| Method | Robustness during | Notes |
+| --- | --- | --- |
+| Replacement with no eviction requested | `degraded`; one volume ran on a single replica | recovered on its own after the replenishment interval |
+| Documented eviction handshake (soft anti-affinity on) | **`healthy` throughout** | node reached 0 replicas; no single-copy window |
+
+Both preserved data. Only the second is predictable, and it is the documented
+one — which is the standard this repo holds itself to.
+
 ## The procedure (image/version/values changes with volumes aboard)
 
 **0. Pre-flight** — all volumes `robustness=healthy`, all replicas
@@ -59,6 +125,17 @@ permanent use; it triggers on ANY cordon):
     CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-roll-mode.sh on   # before
     CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-roll-mode.sh off  # after
 
+**1c. Replacement-style changes only** (image hop, pool resize): the roll
+destroys machines, so move the data off each node before its machine dies.
+Run it per node and let it block until the node is empty — that is the
+documented handshake, and it is what makes the roll predictable:
+
+    CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/lh-graceful-remove.sh <node>
+
+Needs either more nodes than replicas per volume or
+`replica-soft-anti-affinity: true` for the window (see the precondition
+above). It refuses to start when no destination exists instead of hanging.
+
 Validated: with the window open, a single-replica volume's last replica was
 rebuilt onto a surviving worker before its node drained — the volume stayed
 attached and healthy throughout (the default policy would have blocked that
@@ -74,9 +151,12 @@ deleted. Expect node Ready ~10 min per hop.
 > `spec.paused: true` on the provisioner's `MachineDeployment` is accepted
 > and then reverted: Rancher re-applies its own copy of the machine spec on
 > its next reconcile, and the measured result was the roll continuing
-> through all remaining nodes. There is no supported in-band brake on an
-> in-flight machine replacement, so the control that matters is the one you
-> set *before* the roll — replica count and replenishment interval above.
+> through all remaining nodes. There is no supported way to pause an
+> in-flight machine replacement from the deployment object, so pacing comes
+> from preparation rather than obstruction: evict the data off the node the
+> roll is about to retire, wait for `scheduledReplicas: 0`, and by the time
+> Rancher's drain and delete arrive there is nothing left on that machine to
+> destroy. `scripts/lh-graceful-remove.sh` is that wait.
 
 **3. What is normal during the roll** vs what is not:
 
@@ -89,12 +169,14 @@ deleted. Expect node Ready ~10 min per hop.
   roughly that interval per lost node, and read the engine log for
   `RequireNewReplica ... Replica replenishment is delayed until <ts>`
   to see the exact deadline.
-- The consequence for pool rolls: when a pool replaces **every** node
-  one at a time and each delete lands inside another node's replenishment
-  window, a volume can lose a replica per node before any rebuild
-  starts. With `numberOfReplicas` equal to the pool size the worst case
-  is one healthy copy. Raise the replica count above the pool size, or
-  lower the interval, so the roll cannot outrun repair.
+- A replacement roll can run at that floor: each delete lands inside the
+  previous node's replenishment window, so a volume may sit on a single
+  healthy copy for a while. That is the invariant Longhorn's own upgrade
+  guidance protects — at least one healthy replica at a time — so the roll
+  was safe, not lucky. To keep the roll *above* the floor, evict per node
+  (`scripts/lh-graceful-remove.sh`) rather than shortening the timer: the
+  interval exists to reuse existing replica data instead of rebuilding, so
+  lowering it trades a safety margin for speed.
 - Not normal: `state=detached`, `robustness=faulted`, or a volume stuck
   degraded after the roll passes it. Stop and investigate before proceeding.
 

@@ -27,8 +27,18 @@ kubernetesVersion: "v1.33.13+rke2r1"
 cloudCredentialSecretName: "cattle-global-data:cc-<id>"  # ID from the UI, with namespace
 
 # --- Harvester provider defaults (per-pool overrides possible below) ---
+# Everything in this block is a DEFAULT: a pool that leaves its own key empty
+# inherits it, and a pool that sets its own key wins. That is the whole
+# override contract — it applies to imageName, vmNamespace, networkName,
+# diskSize/diskBus and sshUser alike (see nodepools at the bottom).
 vmNamespace: "<REPLACE_ME_VM_NAMESPACE>"        # e.g. k8s-vms
 networkName: "<REPLACE_ME_NETWORK>"             # <ns>/<network>, must exist on Harvester
+# imageName is the golden image the pool's ROOT DISK is built from. Set here
+# it is the cluster-wide default (every pool inherits — the shape a fresh
+# build wants). Set per pool it becomes that pool's own image, which is what
+# makes an OS-image hop independent per pool: control plane on a new
+# generation, workers held on the old one, or either order. Day-2 semantics,
+# blast radius and the pre-flight gates: UPGRADE.md § Per-pool image hops.
 imageName: "<REPLACE_ME_IMAGE>"                 # VMImage displayName, must exist on Harvester
 diskSize: 80                                    # GiB — root disk (example)
 diskBus: "virtio"
@@ -122,8 +132,21 @@ extraChartValues:
       enabled: false
 
 # --- Node pools (example: 3 CP @ 6 vCPU/6 GiB + 3 workers @ 6 vCPU/4 GiB) ---
+# Every pool may override the provider defaults above: imageName,
+# vmNamespace, networkName, disk (the root-disk size in GiB), diskBus,
+# sshUser, userData. An EMPTY string / omitted key inherits the default, so
+# the defaults below render exactly what a single shared image renders —
+# nothing moves on an existing cluster until you fill one in.
+# Filling in `imageName` changes that pool's rendered machine config, which
+# REPLACES every machine in that pool (never in the others): UPGRADE.md
+# § Per-pool image hops, and run tests/render/render-check.sh before merging
+# any chart edit that could move a render.
 nodepools:
   - name: control-plane
+    # "" = inherit the top-level imageName. Set a VMImage displayName here to
+    # put the control plane on its own golden image, independent of the
+    # workers. One pool per commit — see UPGRADE.md.
+    imageName: ""
     etcd: true
     controlplane: true
     worker: false
@@ -133,6 +156,8 @@ nodepools:
     disk: 80
     # control-plane pools are NOT drained — Rancher default/convention.
   - name: workers
+    # "" = inherit the top-level imageName.
+    imageName: ""
     etcd: false
     controlplane: false
     worker: true

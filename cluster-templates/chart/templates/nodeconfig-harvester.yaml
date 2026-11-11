@@ -15,6 +15,15 @@ cpuPinning: false
 diskBus: {{ ($pool.diskBus | default $.Values.diskBus) | quote }}
 diskInfo: {{ printf "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"%s\",\"size\":%.0f}]}" ($pool.imageName | default $.Values.imageName) ($pool.disk | default $.Values.diskSize) | quote }}
 diskSize: "0"
+{{- /* Image resolution: $pool.imageName wins, else the top-level $.Values.imageName.
+     The image travels in diskInfo ONLY - the node driver builds the root disk
+     from that JSON, which is why the imageName field below stays "" and must
+     not be "fixed". A per-pool image is therefore per-pool diskInfo content:
+     it changes that pool's machine config alone, so Rancher re-clones that
+     pool's machine template and only that pool's machines are replaced.
+     This note is a Helm comment on purpose - a YAML '#' comment here would
+     change the rendered bytes and roll every cluster on the next sync.
+     Semantics + blast radius: UPGRADE.md section "Per-pool image hops". */}}
 enableEfi: false
 enableSecureBoot: false
 enableTpm: false

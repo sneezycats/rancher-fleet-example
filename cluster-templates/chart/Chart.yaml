@@ -1,7 +1,7 @@
 apiVersion: v2
 name: rke2-harvester-example
 description: "Cluster template: RKE2 on Harvester (example skeleton)"
-version: 0.1.0
+version: 0.2.0
 annotations:
   catalog.cattle.io/type: cluster-template
   catalog.cattle.io/namespace: fleet-default

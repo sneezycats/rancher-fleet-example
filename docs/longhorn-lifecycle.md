@@ -70,11 +70,31 @@ joins, Longhorn discovers it, old node drains (workload pods reschedule, the
 volume detaches and re-attaches, replicas rebuild to 3/3), old machine is
 deleted. Expect node Ready ~10 min per hop.
 
+> **You cannot hold the roll from outside.** Setting
+> `spec.paused: true` on the provisioner's `MachineDeployment` is accepted
+> and then reverted: Rancher re-applies its own copy of the machine spec on
+> its next reconcile, and the measured result was the roll continuing
+> through all remaining nodes. There is no supported in-band brake on an
+> in-flight machine replacement, so the control that matters is the one you
+> set *before* the roll — replica count and replenishment interval above.
+
 **3. What is normal during the roll** vs what is not:
 
-- Normal: volumes briefly `robustness=degraded` while a replica rebuilds —
-  data serves from the surviving replicas the whole time. Both observed
-  rolls spent well under ten minutes per volume in degraded-and-serving.
+- Normal: volumes `robustness=degraded` while a replica rebuilds — data
+  serves from the surviving replicas the whole time. How long degraded
+  lasts is a setting, not a race: Longhorn delays scheduling a
+  replacement replica for `replica-replenishment-wait-interval`
+  (default **600s**) after a node is lost, so it can reuse a replica on
+  a node that merely restarted instead of rebuilding one. Expect
+  roughly that interval per lost node, and read the engine log for
+  `RequireNewReplica ... Replica replenishment is delayed until <ts>`
+  to see the exact deadline.
+- The consequence for pool rolls: when a pool replaces **every** node
+  one at a time and each delete lands inside another node's replenishment
+  window, a volume can lose a replica per node before any rebuild
+  starts. With `numberOfReplicas` equal to the pool size the worst case
+  is one healthy copy. Raise the replica count above the pool size, or
+  lower the interval, so the roll cannot outrun repair.
 - Not normal: `state=detached`, `robustness=faulted`, or a volume stuck
   degraded after the roll passes it. Stop and investigate before proceeding.
 
@@ -82,10 +102,18 @@ deleted. Expect node Ready ~10 min per hop.
 
     CLUSTER_KUBECONFIG=<guest-kubeconfig> scripts/verify.sh
 
-Expect the verify's robustness check to pass once rebuilds complete (run it
-after the last volume returns to healthy, a few minutes after the machines
-settle). Identity checks (`created_at`, counters, CONTINUITY) are valid even
-mid-rebuild.
+Do not judge the round while a replenishment window is still open — the
+robustness checks will fail on volumes that are simply waiting for their
+timer, which is a false negative, not an incident. Identity checks
+(`created_at`, counters, `CONTINUITY`) are valid immediately and are the
+part that actually proves data survived; run `verify.sh` once for that and
+again after the last replenishment deadline passes for the robustness
+verdict.
+
+If a volume still reads `degraded` with a full set of `running` replicas,
+check for a stale replica CR pinned to a deleted node: it is counted
+against the desired count, so the volume can never report `healthy` until
+the residue below is cleaned. Clean first, then re-run verify.
 
 **5. Residue cleanup (required step)** — the roll leaves the deleted workers
 behind in Longhorn: their `nodes.longhorn.io` CRs and pinned replicas

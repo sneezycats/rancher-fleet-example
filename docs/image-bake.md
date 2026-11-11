@@ -1,7 +1,14 @@
 # Golden image: the change-set vs upstream
 
-Purpose: one image for both control-plane and worker nodes; runtime OS root
+Purpose: one golden image shape for the fleet — a cluster-wide default that
+any node pool may override with its own generation; runtime OS root
 immutable; patching done by image replacement (the git hop), never in place.
+
+A pool-scoped hop is what makes day-2 patching schedulable: the control plane
+can move to a new image while the workers hold, or the reverse, one pool per
+commit, each pool's machines rolling on its own schedule. Blast radius, the
+control-plane costs (surged CP VM, etcd churn, replicas-on-CP), and the skew
+window you have to own: UPGRADE.md § "Per-pool image hops".
 
 > Step-by-step procedure (build host → bake → verify → import):
 > [`custom-sl-micro-longhorn-image.md`](custom-sl-micro-longhorn-image.md) in this directory.
@@ -30,7 +37,8 @@ Copy the bake script per upstream version (bake-<version>-*.sh style), swap
 `SRC`/`OUT` tags, run (guestfish + virt-customize), stage the qcow behind a
 static URL, import on Harvester as a VMImage with a flat
 `sourceType: download`, the right storage class (migratable), and
-`displayName` = the chart's `imageName`.
+`displayName` = the chart's `imageName` (the cluster-wide default, or a
+pool's own `nodepools[].imageName` when that pool is on its own generation).
 
 ## Sanity check a re-tag
 

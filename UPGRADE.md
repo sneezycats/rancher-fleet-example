@@ -14,6 +14,12 @@ versions — re-validate against yours.*
 
 - Every change is a `values.yaml` (or bundle `fleet.yaml`) edit → commit →
   push. No UI clicks, no imperative kubectl apply. Git is the control plane.
+- Some edits scale, some roll one pool, some roll the cluster — § "What each
+  edit does". The distinction that bites: a pool's `imageName` rolls that
+  pool; the top-level `imageName` rolls everything.
+- Editing the chart's `templates/`? Run `tests/render/render-check.sh`
+  before you push: a rendered byte that moves is a machine that gets
+  replaced.
 - Push → Fleet polls (~15 s) → agent runs `helm upgrade` with server-side
   apply → rendered CRs update → CAPI scales/rolls machines → nodes join.
 - If a bundle sits at **0/1 WaitApplied** for more than a couple of minutes,
@@ -29,13 +35,103 @@ versions — re-validate against yours.*
 | `nodepools[].quantity` | MachineDeployment scale | none — no existing machine touched |
 | `nodepools[].vcpu` / `memory` / `disk` | HarvesterConfig change → machine roll | every machine in the pool, one at a time |
 | `kubernetesVersion` | full roll of ALL machines | cluster-wide |
-| `imageName` | full roll (golden image) | cluster-wide |
+| `imageName` (top level — pools inherit) | every pool's machine config changes → every pool rolls | cluster-wide |
+| `nodepools[].imageName` (pool override) | that pool's machine config alone → only that pool rolls | **one pool**; other pools byte-identical, no roll |
 | `machineGlobalConfig` / `chartValues` | config-hash change → roll | cluster-wide |
 | `name:` (cluster name) | NOT a rename — Fleet garbage-collects the old Cluster CR (teardown) and builds a twin | destructive; see below |
+
+Two edits that look identical in `values.yaml` sit at opposite ends of that
+table: changing the top-level `imageName` rolls the whole cluster, changing a
+pool's `imageName` rolls that pool and nothing else. The axis is *which
+pool's rendered machine config changes* — see § Per-pool image hops.
 
 Rolling replacement = new VM + node join BEFORE the old machine is deleted;
 the data layer (Longhorn) rebuilds replicas onto the new nodes — run the
 verification round after (see `docs/promotion-model.md`).
+
+## Per-pool image hops (day-2 OS patching)
+
+The golden image is the patch mechanism (immutable OS root — see
+`docs/image-bake.md`), so on day 2 the question is not *whether* to change an
+image but *which pool pays for it*. A pool's `imageName` is a scoped knob:
+control plane can move to a new image generation while the workers hold on
+the old one, or the other way round, in either order, one pool per commit.
+
+**The mechanism, pool by pool.** Each pool's `HarvesterConfig` is a source
+object; Rancher clones it into an `rke-machine.cattle.io/v1
+HarvesterMachineTemplate` named `<cluster>-<pool>-<hash>` (label
+`rke.cattle.io/machine-template-hash`) and points *that pool's*
+MachineDeployment at the clone. Change one pool's machine config and Rancher
+clones a new template under a new hash and repoints only that pool's
+MachineDeployment; CAPI then rolls only that pool's machines. Rancher's own
+words for the underlying rule (Rancher v2.14, *Configuring Native CAPI
+Infrastructure Providers to Provision RKE2 Clusters*, § "Changing machine
+templates"): machine templates "are usually immutable … This causes all of
+the machines in that pool to be recreated with the new configuration." The
+node-driver path writes that new template for you.
+
+**The control plane is a pool.** On Rancher 2.14.x in this provisioning path
+the control-plane pool is also driven by a MachineDeployment — there is no
+separate control plane machine template to fight with (the `RKEControlPlane`
+object carries plans/etcd; its `machineTemplate` is empty). So the same
+per-pool hop applies to it, with the consequences below. Re-check this on a
+Rancher version other than 2.14.x before relying on it: it is an observation
+about how Rancher builds the object graph, not a documented contract.
+
+**What a pool hop actually costs:**
+
+- **Workers.** The gentle direction: `drainBeforeDelete: true` + bounded
+  `drainBeforeDeleteTimeout` are already set in this chart, so each worker
+  drains, leaves, and is replaced by a VM built from the new image. Measured
+  on a worker pool in the reference lab via a root-disk `disk` bump — the
+  same machine-config path an image hop takes — the pool round landed inside
+  the ~10-minute per-machine window the pipeline section above documents.
+  Surge-style: the replacement joins before the old VM is deleted, so
+  capacity dips never stack.
+- **Control plane / etcd.** Same mechanism, sharper edges. The roll surges an
+  extra control-plane VM, so on a 3-node CP pool the cluster runs 4 CP+etcd
+  members transiently: that is one extra VM of CPU/RAM/disk headroom on the
+  hypervisor, plus etcd member join/remove churn. CP pools are never drained
+  (Rancher convention — see Rancher v2.14, *Nodes and Machine Pools*), which
+  is fine for pure CP nodes and *not* fine if the storage layer puts data on
+  them (next bullet). Take an etcd snapshot before the hop. The worker-pool
+  path above is measured; the control-plane pool path rides the identical
+  object graph but had not been exercised in the reference lab — run it on a
+  scratch cluster before pointing it at anything that matters.
+- **The data layer.** A replaced VM means a replaced root disk. If the
+  distributed storage schedules replicas on control-plane nodes, a CP hop
+  destroys those replicas — with `replicaSoftAntiAffinity: false` (this
+  repo's Longhorn bundle) volumes go degraded-but-honest rather than
+  silently co-locating. Check before the hop, don't assume:
+  `kubectl -n longhorn-system get nodes.longhorn.io -o
+  custom-columns=NAME:.metadata.name,SCHED:.spec.allowScheduling,DISKS:.status.diskStatus`
+  and see whether replicas are running on the CP nodes.
+- **Nobody orders pools for you.** Rancher sequences *Kubernetes version*
+  upgrades via `spec.rkeConfig.upgradeStrategy` (control-plane concurrency,
+  worker concurrency, per-role drain options — Rancher v2.14, *RKE2 Cluster
+  Configuration Reference*, § "Upgrade Strategy"; note this chart does not
+  expose that block yet). An image hop is not governed by it: two pools
+  changed in one commit means two concurrent rolls and no attribution.
+  Hence: **one pool per commit**, workers and CP as separate rounds, each
+  with its own baseline/verify pair.
+
+**Skew is now yours to own.** `kubernetesVersion` is a single cluster-wide
+field, so the Kubernetes version-skew policy is untouched by per-pool
+images. What changes is that pools can sit on different OS generations —
+different kernel, different baked-in units, different CVE coverage — and no
+controller anywhere enforces a limit on that. Write the window down and hold
+it (common shape: a pool may lead or lag by at most one image generation,
+and no skew may survive a Kubernetes version bump). Note also that the
+skew is only *visible* in git; `helm install`/`upgrade` prints the resolved
+image per pool, and warns when any pool pins an image other than the cluster
+default, so `helm get notes <release>` says which generation each pool is on.
+
+**Rollback is another roll.** `git revert` the hop commit and the pool rolls
+back onto the previous image — which means the previous image must still
+exist on the Harvester *and in the pool's VM namespace*. Keep the superseded
+VMImage registered until the round is accepted. Also expect the superseded
+`HarvesterMachineTemplate` to linger after the roll (Rancher does not prune
+it): a second template per pool is normal bookkeeping, not drift.
 
 Longhorn itself is a separate bundle: `fleet/bundles/longhorn/fleet.yaml`
 carries the chart pin AND the values — upgrading Longhorn means editing the
@@ -126,12 +222,21 @@ managed-fields view to understand who owns what:
 **0. Pre-flight** (irreversible steps gate here):
 
 - [ ] Which row of the change table is this — scale, roll, or replace?
+- [ ] Editing anything under `cluster-templates/chart/templates/` (not just
+      values)? Run `tests/render/render-check.sh`. A render delta you did not
+      intend is a roll you did not intend, on every cluster the bundle
+      targets, with no signal in the PR.
 - [ ] Touching `kubernetesVersion`? Check the SUSE Rancher↔Harvester↔RKE2
       support matrix first.
-- [ ] Touching `imageName`? The VM image must exist on the target Harvester
-      AND in the same namespace the VMs land in (the node driver resolves
-      images in the VM namespace — an image in the wrong namespace churns
-      "virtualmachineimages ... not found" with zero VMs created).
+- [ ] Touching `imageName` — top level (rolls every pool) or a pool override
+      (rolls that pool only)? Either way the VM image must exist on the
+      target Harvester AND in the same namespace the VMs land in (the node
+      driver resolves images in the VM namespace — an image in the wrong
+      namespace churns "virtualmachineimages ... not found" with zero VMs
+      created).
+- [ ] Pool image hop on the control plane? etcd snapshot taken, hypervisor
+      headroom for the extra surged CP VM, replicas-on-CP checked, previous
+      image still registered (§ Per-pool image hops). One pool per commit.
 - [ ] The storage class the VMs land on exists and is the intended one (a
       missing SC surfaces later as machine-provision `BackoffLimitExceeded`
       churn that self-heals once applied).
@@ -238,6 +343,8 @@ change, bump the chart version and re-copy (see
 | Delayed worker loops `401 ... connection information` | node's install log | registration token rotated before the delayed node joined → delete the Machine; CAPI recreates it with fresh bootstrap data |
 | Existing CP "waiting for plan to be applied" during scale-up | provisioning cluster status | plan re-delivery → wait, self-heals |
 | `kubectl get cluster` shows an object with no `machinePools` | — | short-name collision with the CAPI Cluster → spell out `clusters.provisioning.cattle.io` |
+| Two `HarvesterMachineTemplate`s for one pool after a config/image change | `kubectl -n fleet-default get harvestermachinetemplates -l rke.cattle.io/machine-template-hash` … or just list them | normal: Rancher cloned a new template under a new hash and repointed the MachineDeployment; the old clone is left behind (not pruned). The live one is the one the pool's MachineDeployment points at: `kubectl -n fleet-default get machinedeployments -o custom-columns=NAME:.metadata.name,INFRA:.spec.template.spec.infrastructureRef.name` |
+| A pool rolled when only the *other* pool's values changed | `tests/render/render-check.sh`, then the rendered `diskInfo` of each pool's `HarvesterConfig` | the shared top-level value was edited instead of the pool override — every pool inherited a new config, so every pool re-cloned. Fix forward: pin the pool's own `imageName` and revert the top-level one |
 | Bundle 0/0 targets, no bundledeployment, GitRepo looks fine | target cluster labels | the `clusterSelector` matched nothing — check labels on the FLEET cluster object, not the provisioning CR: `kubectl get clusters.fleet.cattle.io -n fleet-default -L management.cattle.io/cluster-name` (auto-populated; hand-rolled labels need a manual labeling step) |
 
 ## Where the deeper docs live

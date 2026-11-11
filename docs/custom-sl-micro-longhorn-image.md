@@ -450,7 +450,8 @@ reference lab's doc set) for a migratable single-node example.
 > **Scripted alternative:** stage the finished qcow2 into the CDI root on a
 > build host (served by a small static HTTP server) and import it as a
 > `VirtualMachineImage` with a flat `sourceType: download` — name chosen by you,
-> `displayName` = the chart's `imageName`. Full walkthrough:
+> `displayName` = the chart's `imageName` (cluster-wide default, or a pool's own
+> `nodepools[].imageName` when that pool runs its own generation). Full walkthrough:
 > `cdi-vmimage-import-howto.md` (reference lab's doc set). Either path lands the
 > same VirtualMachineImage (VMI); the CDI path is scriptable and survives rebuilds.
 

@@ -61,7 +61,7 @@ cpuCount: "6"
 cpuModel: ""
 cpuPinning: false
 diskBus: "virtio"
-diskInfo: "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"golden-image-v2\",\"size\":80}]}"
+diskInfo: "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"render-check-image-A\",\"size\":80}]}"
 diskSize: "0"
 enableEfi: false
 enableSecureBoot: false

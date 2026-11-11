@@ -17,11 +17,11 @@
 #   tests/render/render-check.sh --update     # re-pin goldens after review
 #
 # Checks:
-#   1. base fixture          -> byte-identical to golden/base.render.yaml.
+#   1. shared-image shape    -> byte-identical to golden/base.render.yaml.
 #      Any delta here means merging the change rolls live clusters.
-#   2. derived per-pool case -> byte-identical to golden/pool-images.render.yaml,
-#      AND confined to the pool that pins its own image: every other pool's
-#      document must be byte-identical to the base render.
+#   2. pool-pin shape        -> byte-identical to golden/pool-pin.render.yaml.
+#   3. one pool's pin changed -> exactly that pool's document moves, exactly one
+#      line, and inside that line exactly the imageName field.
 #
 # WHY THE PER-POOL CASE IS DERIVED, NOT STORED. Helm replaces a list wholesale
 # when a values file supplies it (and `--set nodepools[0].x` replaces the
@@ -31,9 +31,17 @@
 # the check fails with "3 differing lines; expected only diskInfo" — pointing
 # at the image feature when the real cause is the pool shape. So the gate
 # copies the nodepools block straight out of the chart's own values.yaml and
-# rewrites ONLY each pool's imageName. The pool shape is then unconditionally
-# shared between the two renders, which is exactly the assumption the
+# rewrites ONE pool's imageName. The pool shapes are then unconditionally
+# shared between the renders, which is exactly the assumption the
 # "only that pool moved" assertion rests on.
+#
+# WHY CHECK 3 COMPARES TWO DERIVED RENDERS, NOT SHARED-VERSUS-PINNED. Comparing
+# the shared-image render against a pinned one only isolates a single pool while
+# every pool still inherits the shared image. The moment a cluster pins its own
+# images - the normal day-2 state this feature exists to create - those two
+# renders differ in every pool and the check reports a leak that does not exist.
+# Two renders that differ in one pool's pin and nothing else hold whatever the
+# environment pins.
 #
 # NOTES.txt is deliberately out of scope: Helm notes are not applied as
 # resources, so notes text cannot roll anything.
@@ -45,6 +53,8 @@ golden="${here}/golden"
 values="${here}/values"
 release="render-check"
 ns="fleet-default"
+pin_a="render-check-image-A"
+pin_b="render-check-image-B"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
@@ -54,12 +64,13 @@ command -v helm >/dev/null || die "helm not on PATH"
 
 render() { helm template "${release}" "${chart}" --namespace "${ns}" -f "${1}"; }
 
-# Build the per-pool-image fixture from the chart's own values.yaml: take the
-# nodepools block verbatim, then pin pool 0 to golden-image-v2 and pool 1 to
-# golden-image-v1 (the same string the base fixture shares). Everything else —
-# quantity, vcpu, memory, disk, drain options — is inherited byte-for-byte.
-derive_pool_images() {
-  local out="$1"
+# Fixture = base values + the chart's own nodepools block verbatim, with ONE
+# pool's imageName rewritten. Everything else - quantity, vcpu, memory, disk,
+# drain options, and the OTHER pools' image pins whatever they are - is
+# inherited byte-for-byte.
+#   derive_fixture <out-file> <pool-index> <image-name>
+derive_fixture() {
+  local out="$1" pool="$2" image="$3"
   {
     cat "${values}/base.yaml"
     awk '
@@ -68,50 +79,50 @@ derive_pool_images() {
       grab { print }
     ' "${chart}/values.yaml"
   } > "${out}.raw"
-  python3 - "${out}.raw" "${out}" <<'PYGEN'
-import sys, re
-src, dst = sys.argv[1], sys.argv[2]
-lines = open(src).read().splitlines()
-# pool order as rendered by the chart; index 0 = the pool that advances
-# pool 0 advances to v2; every other pool holds at v1. Any pool count works.
-out, pool, seen = [], -1, 0
-for ln in lines:
+  python3 - "${out}.raw" "${out}" "${pool}" "${image}" <<'PYGEN'
+import re, sys
+src, dst, target_pool, image = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+out, pool, seen, rewritten = [], -1, 0, 0
+for ln in open(src).read().splitlines():
     m = re.match(r"^  - name: (\S+)", ln)
     if m:
         pool = seen
         seen += 1
         out.append(ln)
         continue
-    if pool >= 0 and re.match(r"^    imageName: ", ln):
-        out.append('    imageName: "golden-image-%s"' % ("v2" if pool == 0 else "v1"))
+    if pool == target_pool and re.match(r"^    imageName: ", ln):
+        out.append('    imageName: "%s"' % image)
+        rewritten += 1
         continue
     out.append(ln)
-# every pool must have had an imageName key to rewrite, else the derivation
-# silently missed a pool and the check would prove nothing
+# A missed rewrite would make the two renders identical and let check 3 pass
+# while proving nothing. Fail loudly instead.
 if seen < 2:
     raise SystemExit("FAIL: derived fixture saw %d pool(s); expected >= 2" % seen)
+if rewritten != 1:
+    raise SystemExit("FAIL: rewrote pool %d imageName %d time(s); expected exactly 1"
+                     % (target_pool, rewritten))
 open(dst, "w").write("\n".join(out) + "\n")
 PYGEN
-  # every pool must have had its imageName key rewritten, else the derivation
-  # silently missed a pool and the check would prove nothing
-  local pinned pools
-  pools=$(grep -c '^  - name: ' "${out}")
-  pinned=$(grep -c '^    imageName: "golden-image-v' "${out}" || true)
-  [[ "${pools}" -ge 2 ]] || die "derived fixture saw ${pools} pool(s); expected >= 2"
-  [[ "${pinned}" == "${pools}" ]] || die "derived fixture pinned ${pinned} of ${pools} pool images"
+  rm -f "${out}.raw"
 }
+
+# The advancing pool is whatever the chart lists first, not a hardcoded name.
+first_pool=$(awk '/^nodepools:/{g=1;next} g && /^  - name: /{sub(/^  - name: /,"");print;exit}' "${chart}/values.yaml")
+[[ -n "${first_pool}" ]] || die "could not read the first pool name from ${chart}/values.yaml"
+moved_doc="${release}-${first_pool}"
 
 if [[ "${1:-}" == "--update" ]]; then
   mkdir -p "${golden}"
-  render "${values}/base.yaml"            > "${golden}/base.render.yaml"
-  derive_pool_images "${tmp}/pool-images.yaml"
-  render "${tmp}/pool-images.yaml"        > "${golden}/pool-images.render.yaml"
+  render "${values}/base.yaml" > "${golden}/base.render.yaml"
+  derive_fixture "${tmp}/pin-a.yaml" 0 "${pin_a}"
+  render "${tmp}/pin-a.yaml" > "${golden}/pool-pin.render.yaml"
   echo "goldens re-pinned (review the diff before committing):"
   ( cd "${here}/../.." && git diff --stat -- tests/render/golden || true )
   exit 0
 fi
 
-# 1. the legacy shape must not move at all
+# 1. the shared-image shape must not move at all
 render "${values}/base.yaml" > "${tmp}/base.render.yaml"
 if ! diff -u "${golden}/base.render.yaml" "${tmp}/base.render.yaml" > "${tmp}/base.diff"; then
   echo "FAIL: the render for the shared-image shape changed. A delta in a" >&2
@@ -126,20 +137,23 @@ if ! diff -u "${golden}/base.render.yaml" "${tmp}/base.render.yaml" > "${tmp}/ba
 fi
 echo "PASS  shared-image render unchanged (no roll for clusters on one image)"
 
-# 2. the per-pool shape must move ONLY the pool that pins its own image
-derive_pool_images "${tmp}/pool-images.yaml"
-render "${tmp}/pool-images.yaml" > "${tmp}/pool-images.render.yaml"
-if ! diff -u "${golden}/pool-images.render.yaml" "${tmp}/pool-images.render.yaml" > "${tmp}/pool.diff"; then
-  echo "FAIL: per-pool image render drifted from its golden:" >&2
-  cat "${tmp}/pool.diff" >&2
+# 2. the pool-pin shape must not move either
+[[ -f "${golden}/pool-pin.render.yaml" ]] || die "missing golden/pool-pin.render.yaml; run --update"
+derive_fixture "${tmp}/pin-a.yaml" 0 "${pin_a}"
+render "${tmp}/pin-a.yaml" > "${tmp}/pin-a.render.yaml"
+if ! diff -u "${golden}/pool-pin.render.yaml" "${tmp}/pin-a.render.yaml" > "${tmp}/pin.diff"; then
+  echo "FAIL: pool-pin render drifted from its golden:" >&2
+  cat "${tmp}/pin.diff" >&2
   exit 1
 fi
 
-# the pool that advances is whatever the chart lists first, not a hardcoded name
-first_pool=$(awk '/^nodepools:/{g=1;next} g && /^  - name: /{sub(/^  - name: /,"");print;exit}' "${chart}/values.yaml")
-[[ -n "${first_pool}" ]] || die "could not read the first pool name from ${chart}/values.yaml"
-FIRST_POOL="${release}-${first_pool}" python3 - "${tmp}/base.render.yaml" "${tmp}/pool-images.render.yaml" <<'PY'
-import os, sys, re
+# 3. same shape, one pool's pin swapped: exactly that pool moves, one field
+derive_fixture "${tmp}/pin-b.yaml" 0 "${pin_b}"
+render "${tmp}/pin-b.yaml" > "${tmp}/pin-b.render.yaml"
+
+FIRST_POOL="${moved_doc}" PIN_A="${pin_a}" PIN_B="${pin_b}" \
+  python3 - "${tmp}/pin-a.render.yaml" "${tmp}/pin-b.render.yaml" <<'PY'
+import json, os, re, sys
 
 def docs(path):
     out = {}
@@ -149,35 +163,42 @@ def docs(path):
             out[m.group(1)] = chunk.rstrip() + "\n"
     return out
 
-base, pool = docs(sys.argv[1]), docs(sys.argv[2])
-assert base.keys() == pool.keys(), f"object set changed: {set(base) ^ set(pool)}"
+a_docs, b_docs = docs(sys.argv[1]), docs(sys.argv[2])
+assert a_docs.keys() == b_docs.keys(), f"object set changed: {set(a_docs) ^ set(b_docs)}"
 
-def diskinfo(doc):
-    m = re.search(r'^diskInfo: "(.*)"$', doc, re.M)
-    return m.group(1) if m else None
+def disks(line):
+    # diskInfo is JSON inside a YAML quoted scalar, so its quotes are escaped
+    m = re.match(r'^diskInfo: "(.*)"$', line)
+    assert m, f"not a diskInfo line: {line!r}"
+    return json.loads(m.group(1).encode().decode("unicode_escape"))["disks"]
+
+def shape(disk_list):
+    return [{k: v for k, v in d.items() if k != "imageName"} for d in disk_list]
 
 moved, held = [], []
-for name in base:
-    if base[name] == pool[name]:
+for name in a_docs:
+    if a_docs[name] == b_docs[name]:
         held.append(name)
         continue
     moved.append(name)
-    # a moved document may differ ONLY in diskInfo's image name
-    a, b = base[name].splitlines(), pool[name].splitlines()
+    a, b = a_docs[name].splitlines(), b_docs[name].splitlines()
     assert len(a) == len(b), f"{name}: line count changed, not just an image"
     diffs = [(x, y) for x, y in zip(a, b) if x != y]
     assert len(diffs) == 1, f"{name}: {len(diffs)} differing lines; expected only diskInfo"
-    x, y = diffs[0]
-    assert x.startswith("diskInfo: ") and y.startswith("diskInfo: "), \
-        f"{name}: non-diskInfo line changed:\n  -{x}\n  +{y}"
-    # the ONLY allowed delta: the shared image name swapped for the pool's own
-    assert diskinfo(x).replace("golden-image-v1", "golden-image-v2") == diskinfo(y), \
-        f"{name}: image-name substitution does not explain the delta:\n  -{x}\n  +{y}"
+    da, db = disks(diffs[0][0]), disks(diffs[0][1])
+    assert len(da) == len(db), f"{name}: disk count changed"
+    assert shape(da) == shape(db), \
+        f"{name}: a disk field other than imageName changed:\n  -{da}\n  +{db}"
+    images_a = [d.get("imageName") for d in da]
+    images_b = [d.get("imageName") for d in db]
+    assert os.environ["PIN_A"] in images_a and os.environ["PIN_B"] in images_b, \
+        f"{name}: the pin swap is not what moved it: {images_a} -> {images_b}"
 
-assert len(moved) == 1, f"expected exactly 1 pool moved, got {moved}"
-expected_moved = os.environ["FIRST_POOL"]
-assert moved[0] == expected_moved, f"expected {expected_moved} to move, got {moved}"
-print(f"PASS  per-pool image moves {moved[0]} only; untouched: {', '.join(sorted(held))}")
+assert len(moved) == 1, \
+    f"expected exactly 1 pool to move, got {moved} - a per-pool pin leaked"
+assert moved[0] == os.environ["FIRST_POOL"], \
+    f"expected {os.environ['FIRST_POOL']} to move, got {moved[0]}"
+print(f"PASS  one pool's pin moves {moved[0]} only; untouched: {', '.join(sorted(held))}")
 PY
 
 echo "OK      render gate clean"

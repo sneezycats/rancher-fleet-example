@@ -24,7 +24,7 @@ reviewable commit, and promotion is a branch merge.
 **Upgrade flow:** change a value → commit → push → Fleet `helm upgrade` →
 config hash changes → CAPI rolls machines (new nodes join before old are
 deleted) → Longhorn rebuilds replicas onto the new nodes → `verify.sh` proves
-data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them — and the roll is scoped to whatever the edit touched: a pool's own `imageName` rolls that pool, so the control plane can hop OS images independently of the workers. `UPGRADE.md` has the full taxonomy, the verification chain, and the pitfalls.
+data continuity. **No UI clicks, no imperative tooling.** Scale changes simply add/remove machines; config/image/version changes roll them — and the roll is scoped to whatever the edit touched: a pool's own `imageName` rolls that pool, so the control plane can hop OS images independently of the workers; once every pool pins one, the top-level value only moves pools that still inherit it. `UPGRADE.md` has the full taxonomy, the verification chain, and the pitfalls.
 
 ## Repository layout
 

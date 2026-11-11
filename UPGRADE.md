@@ -70,6 +70,14 @@ templates"): machine templates "are usually immutable … This causes all of
 the machines in that pool to be recreated with the new configuration." The
 node-driver path writes that new template for you.
 
+**The shared value goes inert once every pool pins one.** Because resolution
+happens per pool, bumping the top-level image while each pool sets its own
+`imageName` changes nobody's machine config: no new clone, no revision bump, no
+roll — confirmed, a shared-image bump with both pools pinned moved zero
+machines. The pools that still *inherit* (its `imageName` omitted or `""`) are
+precisely the ones that move. Read the top-level field as "what new clusters
+and un-pinned pools get", not as a cluster-wide kill switch.
+
 **The control plane is a pool.** On Rancher 2.14.x in this provisioning path
 the control-plane pool is also driven by a MachineDeployment — there is no
 separate control plane machine template to fight with (the `RKEControlPlane`
@@ -94,10 +102,7 @@ about how Rancher builds the object graph, not a documented contract.
   hypervisor, plus etcd member join/remove churn. CP pools are never drained
   (Rancher convention — see Rancher v2.14, *Nodes and Machine Pools*), which
   is fine for pure CP nodes and *not* fine if the storage layer puts data on
-  them (next bullet). Take an etcd snapshot before the hop. The worker-pool
-  path above is measured; the control-plane pool path rides the identical
-  object graph but had not been exercised in the reference lab — run it on a
-  scratch cluster before pointing it at anything that matters.
+  them (next bullet). Take an etcd snapshot before the hop.
 - **The data layer.** A replaced VM means a replaced root disk. If the
   distributed storage schedules replicas on control-plane nodes, a CP hop
   destroys those replicas — with `replicaSoftAntiAffinity: false` (this
@@ -106,6 +111,16 @@ about how Rancher builds the object graph, not a documented contract.
   `kubectl -n longhorn-system get nodes.longhorn.io -o
   custom-columns=NAME:.metadata.name,SCHED:.spec.allowScheduling,DISKS:.status.diskStatus`
   and see whether replicas are running on the CP nodes.
+- **What a control-plane hop looks like on the wire** (observed on a scratch
+  3-CP / 3-worker cluster, Rancher 2.14.x): machines are replaced one at a
+  time; the surge CP VM joins and its etcd member syncs before the old VM is
+  deleted, so etcd briefly runs 4 members, all `1/1 Running`, no restarts; the
+  provisioning cluster's `Ready` condition never went false; the full 3-node
+  round took ~14 minutes (~4-5 min per machine). While the CP pool rolled, the
+  workers pool sat at its original revision on its original template — the
+  blast-radius claim, observed rather than inferred. The opposite direction
+  behaved the same way, and `drainBeforeDelete` was visible as a node parked
+  at `Ready,SchedulingDisabled` before its VM went away.
 - **Nobody orders pools for you.** Rancher sequences *Kubernetes version*
   upgrades via `spec.rkeConfig.upgradeStrategy` (control-plane concurrency,
   worker concurrency, per-role drain options — Rancher v2.14, *RKE2 Cluster
@@ -114,6 +129,22 @@ about how Rancher builds the object graph, not a documented contract.
   changed in one commit means two concurrent rolls and no attribution.
   Hence: **one pool per commit**, workers and CP as separate rounds, each
   with its own baseline/verify pair.
+
+**Verify the OS, not the image name.** A `displayName` is free text someone
+typed when registering the image; the OS does not know about it. On a real hop
+the node that came up off an image named for one SLE-Micro generation reported
+a *different family entirely* — `SUSE Linux Enterprise Server 16.0`, kernel
+6.12, where the image it replaced had reported SLE Micro 6.1 on kernel 6.4. So
+do not grep the node list for a string you guessed. Ask the nodes:
+
+```bash
+kubectl get nodes -o custom-columns='NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion'
+```
+
+and inside one replaced VM: `grep -E '^(NAME|VERSION)=' /etc/os-release; uname -r`.
+A family change in that output is not a mislabelled image — it is what the
+golden image is genuinely built from, and that is what a skew policy has to
+cover.
 
 **Skew is now yours to own.** `kubernetesVersion` is a single cluster-wide
 field, so the Kubernetes version-skew policy is untouched by per-pool
@@ -228,8 +259,9 @@ managed-fields view to understand who owns what:
       targets, with no signal in the PR.
 - [ ] Touching `kubernetesVersion`? Check the SUSE Rancher↔Harvester↔RKE2
       support matrix first.
-- [ ] Touching `imageName` — top level (rolls every pool) or a pool override
-      (rolls that pool only)? Either way the VM image must exist on the
+- [ ] Touching `imageName` — top level (rolls every pool that still *inherits*
+      it; a pool with its own override does not move) or a pool override (rolls
+      that pool only)? Either way the VM image must exist on the
       target Harvester AND in the same namespace the VMs land in (the node
       driver resolves images in the VM namespace — an image in the wrong
       namespace churns "virtualmachineimages ... not found" with zero VMs
@@ -345,6 +377,8 @@ change, bump the chart version and re-copy (see
 | `kubectl get cluster` shows an object with no `machinePools` | — | short-name collision with the CAPI Cluster → spell out `clusters.provisioning.cattle.io` |
 | Two `HarvesterMachineTemplate`s for one pool after a config/image change | `kubectl -n fleet-default get harvestermachinetemplates -l rke.cattle.io/machine-template-hash` … or just list them | normal: Rancher cloned a new template under a new hash and repointed the MachineDeployment; the old clone is left behind (not pruned). The live one is the one the pool's MachineDeployment points at: `kubectl -n fleet-default get machinedeployments -o custom-columns=NAME:.metadata.name,INFRA:.spec.template.spec.infrastructureRef.name` |
 | A pool rolled when only the *other* pool's values changed | `tests/render/render-check.sh`, then the rendered `diskInfo` of each pool's `HarvesterConfig` | the shared top-level value was edited instead of the pool override — every pool inherited a new config, so every pool re-cloned. Fix forward: pin the pool's own `imageName` and revert the top-level one |
+| `tests/render/render-check.sh` fails immediately after an image hop you *meant* to make | the diff the gate prints | not a regression: the hop changed machine config, which is exactly what the gate guards. Run `--update`, commit the re-pinned goldens in the same commit as the hop — the golden diff is then your evidence that exactly one pool's `diskInfo` moved |
+| Nodes came up on an OS that does not match the image's name | `kubectl get nodes -o custom-columns=NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion`, then `/etc/os-release` on the VM | `displayName` is free text chosen at image registration; it can differ from the booted OS in family, not just version. Verify with the two commands above; fix the image or the expectation, never the check (§ Per-pool image hops) |
 | Bundle 0/0 targets, no bundledeployment, GitRepo looks fine | target cluster labels | the `clusterSelector` matched nothing — check labels on the FLEET cluster object, not the provisioning CR: `kubectl get clusters.fleet.cattle.io -n fleet-default -L management.cattle.io/cluster-name` (auto-populated; hand-rolled labels need a manual labeling step) |
 
 ## Where the deeper docs live

@@ -38,7 +38,16 @@ Copy the bake script per upstream version (bake-<version>-*.sh style), swap
 static URL, import on Harvester as a VMImage with a flat
 `sourceType: download`, the right storage class (migratable), and
 `displayName` = the chart's `imageName` (the cluster-wide default, or a
+
 pool's own `nodepools[].imageName` when that pool is on its own generation).
+
+> A `displayName` is free text you chose at registration; it does not have to match
+> what the image boots. On a real hop a node built from an image named for one
+> SLE-Micro generation reported a different OS *family* (`SUSE Linux Enterprise
+> Server 16.0`, kernel 6.12). Record the truth from the node —
+> `kubectl get nodes -o custom-columns=NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion`
+> or `/etc/os-release` on the VM — and let the image name be a label, not a claim
+> (`UPGRADE.md` § Per-pool image hops).
 
 ## Sanity check a re-tag
 

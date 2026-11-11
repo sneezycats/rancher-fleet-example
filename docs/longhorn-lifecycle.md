@@ -115,6 +115,12 @@ check for a stale replica CR pinned to a deleted node: it is counted
 against the desired count, so the volume can never report `healthy` until
 the residue below is cleaned. Clean first, then re-run verify.
 
+Note the catch in that ordering: `scripts/lh-residue-cleanup.sh` refuses to
+run unless every volume is already healthy and attached, so it cannot clean
+the residue that is itself holding a volume degraded. In that state apply the
+three steps from the residue section by hand, then use the script for the
+rest of the sweep.
+
 **5. Residue cleanup (required step)** — the roll leaves the deleted workers
 behind in Longhorn: their `nodes.longhorn.io` CRs and pinned replicas
 persist indefinitely (observed 25+ minutes, no self-clean; the Longhorn UI

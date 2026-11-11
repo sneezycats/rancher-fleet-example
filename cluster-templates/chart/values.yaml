@@ -41,6 +41,8 @@ kubernetesVersion: "v1.33.13+rke2r1"
 # If you enable draining, know that it is a different knob from
 # nodepools[].drainBeforeDelete - that one drains on machine REPLACEMENT (image
 # hops, scaling), this one drains on version UPGRADE plans.
+# Verified on 2.14.3: with this block set, a control-plane-only image hop
+# rolled the control plane and moved zero workers.
 upgradeStrategy:
   controlPlaneConcurrency: "1"
   workerConcurrency: "1"

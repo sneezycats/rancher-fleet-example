@@ -61,7 +61,11 @@ the old one, or the other way round, in either order, one pool per commit.
 object; Rancher clones it into an `rke-machine.cattle.io/v1
 HarvesterMachineTemplate` named `<cluster>-<pool>-<hash>` (label
 `rke.cattle.io/machine-template-hash`) and points *that pool's*
-MachineDeployment at the clone. Change one pool's machine config and Rancher
+MachineDeployment at the clone. Two unrelated names are in play and mixing
+them up misreads a roll: the source `HarvesterConfig` the chart renders is
+`<helm-release-name>-<pool>`, while the clone is named from the *cluster*. The
+clone's `<hash>` is a content hash, not a counter — hop a pool back to an image
+it once used and the same template name comes back. Change one pool's machine config and Rancher
 clones a new template under a new hash and repoints only that pool's
 MachineDeployment; CAPI then rolls only that pool's machines. Rancher's own
 words for the underlying rule (Rancher v2.14, *Configuring Native CAPI
@@ -139,8 +143,11 @@ reasonably call it a variant of it, so a Micro-branded golden image can report
 `SUSE Linux Enterprise Server` in `osImage` without anything being mislabelled.
 Observed on a real hop: the replacement node reported `SUSE Linux Enterprise
 Server 16.0` on kernel 6.12 where the image it replaced reported `SUSE Linux
-Micro 6.1` on kernel 6.4 — that may be a base-image change in the bake, a
-rebranding in os-release, or both, and the node alone cannot tell you which.
+Micro 6.1` on kernel 6.4 — a base-image change in the bake, a rebranding in
+os-release, or both. Hopping that pool back to the earlier image brought the
+earlier report back unchanged, which settles one thing: the string follows the
+*image*, not the node. A changed report is therefore not node drift, and no
+amount of work on the node will change it.
 Ask the nodes, and treat the *kernel* as the harder signal:
 
 ```bash
@@ -419,6 +426,42 @@ no controller, no workloads, and it is inert on its own.
 `longhorn-capi-controller/config/rbac/workload_role.yaml` — on upstream
 change, bump the chart version and re-copy (see
 `fleet/bundles/lhcc-rbac/README.md`).
+
+## Adopting upstream chart changes into a cluster repo
+
+A cluster repo carries a copy of this chart *plus its own environment values in
+`values.yaml`*. Adopting an upstream chart change is therefore a **template**
+operation, never a directory copy:
+
+```bash
+git checkout upstream/main -- cluster-templates/chart/templates cluster-templates/chart/Chart.yaml
+```
+
+Then add whatever new values key the feature needs by hand. Copying the whole
+chart directory also overwrites `values.yaml` with upstream `<REPLACE_ME_*>`
+placeholders, and the failure mode is not a failed sync: with `name` unset the
+Cluster is named from the Helm release, so the upgraded release renders a
+*different object name*, Helm deletes the object it no longer renders, and the
+running cluster is **destroyed and rebuilt** — not renamed, not repaired. This
+was measured the hard way; recovery is a fresh provision of every machine.
+
+Two guardrails, because the chart-level gate cannot see this:
+
+- `tests/render/render-check.sh` renders the chart with its **own fixtures**, so
+  it passes happily on a chart whose env values were just clobbered.
+- The pre-flight that does catch it renders with the repo's own values and
+  diffs before against after. Expect exactly the delta you intended — nothing
+  touching `diskInfo`, no change to `metadata.name`:
+
+```bash
+git archive HEAD cluster-templates/chart | tar -x -C /tmp/before
+helm template "$CLUSTER" /tmp/before/cluster-templates/chart -f cluster-templates/chart/values.yaml > /tmp/before.yaml
+helm template "$CLUSTER" cluster-templates/chart             -f cluster-templates/chart/values.yaml > /tmp/after.yaml
+diff -u /tmp/before.yaml /tmp/after.yaml
+```
+
+If the delta is bigger than the edit you made, stop and find out why before
+pushing: whatever it is, Fleet will do it to the cluster.
 
 ## Troubleshooting
 

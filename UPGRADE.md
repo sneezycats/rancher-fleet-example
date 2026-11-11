@@ -45,9 +45,12 @@ table: changing the top-level `imageName` rolls the whole cluster, changing a
 pool's `imageName` rolls that pool and nothing else. The axis is *which
 pool's rendered machine config changes* — see § Per-pool image hops.
 
-Rolling replacement = new VM + node join BEFORE the old machine is deleted;
-the data layer (Longhorn) rebuilds replicas onto the new nodes — run the
-verification round after (see `docs/promotion-model.md`).
+Rolling replacement = new VM + node join BEFORE the old machine is deleted.
+Where a pool carries Longhorn data, the documented standard is to evict the
+volume replicas off each node before its machine is destroyed
+(`docs/longhorn-lifecycle.md`, `scripts/lh-graceful-remove.sh`) — Longhorn
+then rebuilds onto the new nodes. Run the verification round after (see
+`docs/promotion-model.md`).
 
 ## Per-pool image hops (day-2 OS patching)
 

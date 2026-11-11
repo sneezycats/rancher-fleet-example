@@ -1,0 +1,16 @@
+# Render fixture: the LEGACY shape — one image shared by every pool.
+# Used by tests/render/render-check.sh to prove the chart's rendered output is
+# byte-identical before and after the per-pool image feature. Any delta here
+# means the change would roll live clusters on the next Fleet sync.
+name: render-check
+kubernetesVersion: "v1.33.13+rke2r1"
+# (synthetic placeholder — not a real cloud credential id; the render only
+# echoes it into the Cluster CR)
+cloudCredentialSecretName: "cattle-global-data:cc-example"
+vmNamespace: "vm-namespace"
+networkName: "network-namespace/network"
+imageName: "golden-image-v1"
+diskSize: 80
+diskBus: "virtio"
+sshUser: "rancher"
+userData: "I2Nsb3VkLWNvbmZpZwp1c2VyczogW10K"

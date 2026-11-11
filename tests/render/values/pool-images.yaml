@@ -1,0 +1,36 @@
+# Render fixture: per-pool images — control-plane advanced, workers held back.
+# render-check.sh asserts the delta vs base.yaml is confined to the
+# control-plane HarvesterConfig; the workers doc must stay byte-identical.
+name: render-check
+kubernetesVersion: "v1.33.13+rke2r1"
+# (synthetic placeholder — not a real cloud credential id; the render only
+# echoes it into the Cluster CR)
+cloudCredentialSecretName: "cattle-global-data:cc-example"
+vmNamespace: "vm-namespace"
+networkName: "network-namespace/network"
+imageName: "golden-image-v1"
+diskSize: 80
+diskBus: "virtio"
+sshUser: "rancher"
+userData: "I2Nsb3VkLWNvbmZpZwp1c2VyczogW10K"
+nodepools:
+  - name: control-plane
+    imageName: "golden-image-v2"
+    etcd: true
+    controlplane: true
+    worker: false
+    quantity: 3
+    vcpu: 6
+    memory: 6
+    disk: 80
+  - name: workers
+    imageName: "golden-image-v1"
+    etcd: false
+    controlplane: false
+    worker: true
+    quantity: 3
+    vcpu: 6
+    memory: 4
+    disk: 160
+    drainBeforeDelete: true
+    drainBeforeDeleteTimeout: 1h0m0s

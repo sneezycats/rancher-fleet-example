@@ -1,0 +1,127 @@
+---
+# Source: rke2-harvester-example/templates/cluster.yaml
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+  name: render-check
+  namespace: fleet-default
+spec:
+  cloudCredentialSecretName: "cattle-global-data:cc-example"
+  enableNetworkPolicy: false
+  kubernetesVersion: "v1.33.13+rke2r1"
+  rkeConfig:
+    chartValues:
+      global:
+        cattle:
+          clusterName: "render-check"
+      harvester-cloud-provider:
+        cloudConfigPath: "/var/lib/rancher/rke2/etc/config-files/cloud-provider-config"
+      rke2-traefik:
+        gateway:
+          enabled: false
+        providers:
+          kubernetesGateway:
+            enabled: true
+    machineGlobalConfig:
+      cni: cilium
+      ingress-controller: traefik
+    machinePools:
+      - name: control-plane
+        displayName: control-plane
+        controlPlaneRole: true
+        etcdRole: true
+        quantity: 3
+        machineOS: linux
+        machineConfigRef:
+          kind: HarvesterConfig
+          name: render-check-control-plane
+      - name: workers
+        displayName: workers
+        workerRole: true
+        quantity: 3
+        drainBeforeDelete: true
+        drainBeforeDeleteTimeout: "1h0m0s"
+        machineOS: linux
+        machineConfigRef:
+          kind: HarvesterConfig
+          name: render-check-workers
+
+---
+# Source: rke2-harvester-example/templates/nodeconfig-harvester.yaml
+apiVersion: rke-machine-config.cattle.io/v1
+kind: HarvesterConfig
+metadata:
+  name: render-check-control-plane
+  namespace: fleet-default
+cloudConfig: ""
+clusterId: ""
+clusterName: ""
+clusterType: ""
+cpuCount: "6"
+cpuModel: ""
+cpuPinning: false
+diskBus: "virtio"
+diskInfo: "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"golden-image-v2\",\"size\":80}]}"
+diskSize: "0"
+enableEfi: false
+enableSecureBoot: false
+enableTpm: false
+imageName: ""
+isolateEmulatorThread: false
+keyPairName: ""
+kubeconfigContent: ""
+memorySize: "6"
+networkData: ""
+networkInfo: "{\"interfaces\":[{\"networkName\":\"network-namespace/network\"}]}"
+networkModel: ""
+networkName: ""
+networkType: ""
+reservedMemorySize: "-1"
+sshPassword: ""
+sshPort: "22"
+sshPrivateKeyPath: ""
+sshUser: "rancher"
+userData: "I2Nsb3VkLWNvbmZpZwp1c2VyczogW10K"
+vgpuInfo: ""
+vmAffinity: ""
+vmNamespace: "vm-namespace"
+
+---
+# Source: rke2-harvester-example/templates/nodeconfig-harvester.yaml
+apiVersion: rke-machine-config.cattle.io/v1
+kind: HarvesterConfig
+metadata:
+  name: render-check-workers
+  namespace: fleet-default
+cloudConfig: ""
+clusterId: ""
+clusterName: ""
+clusterType: ""
+cpuCount: "6"
+cpuModel: ""
+cpuPinning: false
+diskBus: "virtio"
+diskInfo: "{\"disks\":[{\"bootOrder\":1,\"imageName\":\"golden-image-v1\",\"size\":160}]}"
+diskSize: "0"
+enableEfi: false
+enableSecureBoot: false
+enableTpm: false
+imageName: ""
+isolateEmulatorThread: false
+keyPairName: ""
+kubeconfigContent: ""
+memorySize: "4"
+networkData: ""
+networkInfo: "{\"interfaces\":[{\"networkName\":\"network-namespace/network\"}]}"
+networkModel: ""
+networkName: ""
+networkType: ""
+reservedMemorySize: "-1"
+sshPassword: ""
+sshPort: "22"
+sshPrivateKeyPath: ""
+sshUser: "rancher"
+userData: "I2Nsb3VkLWNvbmZpZwp1c2VyczogW10K"
+vgpuInfo: ""
+vmAffinity: ""
+vmNamespace: "vm-namespace"

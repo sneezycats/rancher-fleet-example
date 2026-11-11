@@ -130,21 +130,30 @@ about how Rancher builds the object graph, not a documented contract.
   Hence: **one pool per commit**, workers and CP as separate rounds, each
   with its own baseline/verify pair.
 
-**Verify the OS, not the image name.** A `displayName` is free text someone
-typed when registering the image; the OS does not know about it. On a real hop
-the node that came up off an image named for one SLE-Micro generation reported
-a *different family entirely* — `SUSE Linux Enterprise Server 16.0`, kernel
-6.12, where the image it replaced had reported SLE Micro 6.1 on kernel 6.4. So
-do not grep the node list for a string you guessed. Ask the nodes:
+**Verify the OS, not the image name.** Two independent reasons, and they point
+the same way. First, a `displayName` is free text someone typed when
+registering the image; the OS does not know about it. Second, the product
+names themselves are not stable signals: SLE Micro (also spelled SL-Micro, and
+renamed more than once) is built from SUSE Linux Enterprise Linux and one can
+reasonably call it a variant of it, so a Micro-branded golden image can report
+`SUSE Linux Enterprise Server` in `osImage` without anything being mislabelled.
+Observed on a real hop: the replacement node reported `SUSE Linux Enterprise
+Server 16.0` on kernel 6.12 where the image it replaced reported `SUSE Linux
+Micro 6.1` on kernel 6.4 — that may be a base-image change in the bake, a
+rebranding in os-release, or both, and the node alone cannot tell you which.
+Ask the nodes, and treat the *kernel* as the harder signal:
 
 ```bash
 kubectl get nodes -o custom-columns='NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion'
 ```
 
 and inside one replaced VM: `grep -E '^(NAME|VERSION)=' /etc/os-release; uname -r`.
-A family change in that output is not a mislabelled image — it is what the
-golden image is genuinely built from, and that is what a skew policy has to
-cover.
+If the string disagrees with the image name and it matters, settle it at the
+source: read `os-release` inside the qcow before it is baked into a pool
+(`guestfish --ro -a image.qcow -i cat /etc/os-release`) — the image is the
+authority, the displayName is a label, and the node string is only a report.
+Whatever the names say, write down the *kernel* per generation: that is the
+thing a skew policy actually has to cover.
 
 **Skew is now yours to own.** `kubernetesVersion` is a single cluster-wide
 field, so the Kubernetes version-skew policy is untouched by per-pool
@@ -378,7 +387,7 @@ change, bump the chart version and re-copy (see
 | Two `HarvesterMachineTemplate`s for one pool after a config/image change | `kubectl -n fleet-default get harvestermachinetemplates -l rke.cattle.io/machine-template-hash` … or just list them | normal: Rancher cloned a new template under a new hash and repointed the MachineDeployment; the old clone is left behind (not pruned). The live one is the one the pool's MachineDeployment points at: `kubectl -n fleet-default get machinedeployments -o custom-columns=NAME:.metadata.name,INFRA:.spec.template.spec.infrastructureRef.name` |
 | A pool rolled when only the *other* pool's values changed | `tests/render/render-check.sh`, then the rendered `diskInfo` of each pool's `HarvesterConfig` | the shared top-level value was edited instead of the pool override — every pool inherited a new config, so every pool re-cloned. Fix forward: pin the pool's own `imageName` and revert the top-level one |
 | `tests/render/render-check.sh` fails immediately after an image hop you *meant* to make | the diff the gate prints | not a regression: the hop changed machine config, which is exactly what the gate guards. Run `--update`, commit the re-pinned goldens in the same commit as the hop — the golden diff is then your evidence that exactly one pool's `diskInfo` moved |
-| Nodes came up on an OS that does not match the image's name | `kubectl get nodes -o custom-columns=NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion`, then `/etc/os-release` on the VM | `displayName` is free text chosen at image registration; it can differ from the booted OS in family, not just version. Verify with the two commands above; fix the image or the expectation, never the check (§ Per-pool image hops) |
+| Nodes came up on an OS whose *name* does not match the image's name | `kubectl get nodes -o custom-columns=NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion`, then `/etc/os-release` on the VM; `guestfish --ro -a <qcow> -i cat /etc/os-release` for the image itself | usually not a bug: `displayName` is free text, and SLE Micro is built from SLES so a Micro image may report `SUSE Linux Enterprise Server`. Compare kernels across generations (the hard signal), then fix the image or the expectation — never the check (§ Per-pool image hops) |
 | Bundle 0/0 targets, no bundledeployment, GitRepo looks fine | target cluster labels | the `clusterSelector` matched nothing — check labels on the FLEET cluster object, not the provisioning CR: `kubectl get clusters.fleet.cattle.io -n fleet-default -L management.cattle.io/cluster-name` (auto-populated; hand-rolled labels need a manual labeling step) |
 
 ## Where the deeper docs live

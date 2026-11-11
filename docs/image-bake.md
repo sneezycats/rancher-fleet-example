@@ -41,12 +41,15 @@ static URL, import on Harvester as a VMImage with a flat
 
 pool's own `nodepools[].imageName` when that pool is on its own generation).
 
-> A `displayName` is free text you chose at registration; it does not have to match
-> what the image boots. On a real hop a node built from an image named for one
-> SLE-Micro generation reported a different OS *family* (`SUSE Linux Enterprise
-> Server 16.0`, kernel 6.12). Record the truth from the node —
-> `kubectl get nodes -o custom-columns=NAME:.metadata.name,OS:.status.nodeInfo.osImage,KERNEL:.status.nodeInfo.kernelVersion`
-> or `/etc/os-release` on the VM — and let the image name be a label, not a claim
+> A `displayName` is free text you chose at registration, and the product names
+> are their own moving target: SLE Micro is built from SUSE Linux Enterprise
+> Linux, so a Micro-branded golden image can legitimately report
+> `SUSE Linux Enterprise Server` in `osImage`. On a real hop the new node
+> reported SLES 16.0 on kernel 6.12 where the image it replaced reported SLE
+> Micro 6.1 on kernel 6.4 — base-image change, rename, or both, the node string
+> cannot tell you. Record what the image actually contains
+> (`guestfish --ro -a image.qcow -i cat /etc/os-release`), record the kernel,
+> and let the name be a label rather than a claim
 > (`UPGRADE.md` § Per-pool image hops).
 
 ## Sanity check a re-tag

@@ -21,6 +21,53 @@ spec:
       {{- with .Values.extraChartValues }}
       {{- toYaml . | nindent 6 }}
       {{- end }}
+    {{- with .Values.etcd }}
+    etcd:
+      {{- if .disableSnapshots }}
+      disableSnapshots: true
+      {{- end }}
+      {{- /* hasKey gates: render only when the user actually set the
+           field. This chart ships `etcd:` fully commented, so a partial
+           enable (--set etcd.s3.bucket=...) must not leak a bare
+           `snapshotRetention: <no value>` line into the CR. */}}
+      {{- if hasKey . "snapshotRetention" }}
+      snapshotRetention: {{ .snapshotRetention }}
+      {{- end }}
+      {{- if hasKey . "snapshotScheduleCron" }}
+      snapshotScheduleCron: {{ .snapshotScheduleCron | quote }}
+      {{- end }}
+      {{- with .s3 }}
+      s3:
+        {{- /* Booleans emitted ONLY when true - Rancher's provisioning
+             normalizer strips false-valued etcd.s3 booleans, and an
+             always-rendered `false` makes Fleet count the Cluster as
+             Modified forever (same pitfall as machinePools booleans). */}}
+        {{- with .bucket }}
+        bucket: {{ . | quote }}
+        {{- end }}
+        {{- with .endpoint }}
+        endpoint: {{ . | quote }}
+        {{- end }}
+        {{- with .region }}
+        region: {{ . | quote }}
+        {{- end }}
+        {{- with .folder }}
+        folder: {{ . | quote }}
+        {{- end }}
+        {{- with .endpointCA }}
+        endpointCA: {{ . | quote }}
+        {{- end }}
+        {{- with .cloudCredentialName }}
+        cloudCredentialName: {{ . | quote }}
+        {{- end }}
+        {{- if .skipSSLVerify }}
+        skipSSLVerify: true
+        {{- end }}
+        {{- if .retention }}
+        retention: {{ .retention }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
     machineGlobalConfig:
       {{- toYaml .Values.machineGlobalConfig | nindent 6 }}
     machinePools:

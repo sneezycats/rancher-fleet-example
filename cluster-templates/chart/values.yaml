@@ -154,6 +154,33 @@ extraChartValues:
     gateway:
       enabled: false
 
+# --- etcd snapshots / S3 backup target (OPTIONAL — disabled by default) ----
+# The `etcd:` block below lands at spec.rkeConfig.etcd on the provisioning
+# Cluster CR — the same slot the Rancher UI's etcd panel writes; Rancher
+# delegates the actual snapshotting to the downstream RKE2 engine. SHIPPED
+# COMMENTED ON PURPOSE: with the block absent the rendered CR is identical
+# to the pre-etcd chart (Rancher injects its own snapshot defaults), so
+# adopting this chart version is a no-op for existing clusters. Uncomment to
+# manage snapshot policy (and optionally an S3-compatible backup target)
+# declaratively — full recipe + citations: docs/etcd-backup-s3.md.
+#
+# Defaults shown MATCH what Rancher injects anyway (drift-neutral when you
+# uncomment them as-is). Rules that bite (details in the doc): one bucket or
+# folder PER CLUSTER; credentials NEVER in git — cloudCredentialName points
+# at a Secret (namespace:name) holding accessKey/secretKey; `retention`
+# counts S3 objects cluster-wide, `snapshotRetention` local files per node.
+#
+# etcd:
+#   snapshotScheduleCron: "0 */5 * * *"
+#   snapshotRetention: 5
+#   s3:
+#     cloudCredentialName: "fleet-default:etcd-s3-creds"
+#     endpoint: "storage.googleapis.com"   # GCS interop: XML API endpoint
+#     region: "us-central1"                # GCS: any string signs OK; use bucket location
+#     bucket: "rke2-etcd-snapshots"
+#     folder: "<unique-per-cluster-prefix>"
+#     retention: 10
+
 # --- Node pools (example: 3 CP @ 6 vCPU/6 GiB + 3 workers @ 6 vCPU/4 GiB) ---
 # Every pool may override the provider defaults above: imageName,
 # vmNamespace, networkName, disk (the root-disk size in GiB), diskBus,
